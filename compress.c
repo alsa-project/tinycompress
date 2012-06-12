@@ -300,12 +300,14 @@ int compress_write(struct compress *compress, char *buf, unsigned int size)
 	fds.fd = compress->fd;
 	fds.events = POLLOUT;
 
+
 	/*TODO: treat auto start here first */
 	while (size) {
 		if (ioctl(compress->fd, SNDRV_COMPRESS_AVAIL, &avail))
 			return oops(compress, errno, "cannot get avail");
 
-		if (avail.avail == 0) {
+		/* we will write only when avail > fragment size */
+		if (avail.avail < compress->config->fragment_size) {
 			/* nothing to write so wait for 10secs */
 			ret = poll(&fds, 1, 1000000);
 			if (ret < 0)
