@@ -376,6 +376,13 @@ int compress_pause(struct compress *compress)
 	return 0;
 }
 
+int compress_resume(struct compress *compress)
+{
+	if (ioctl(compress->fd, SNDRV_COMPRESS_RESUME))
+		return oops(compress, errno, "cannot pause the stream\n");
+	return 0;
+}
+
 int compress_drain(struct compress *compress)
 {
 	if (!is_compress_running(compress))
