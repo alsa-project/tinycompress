@@ -272,7 +272,7 @@ int compress_get_hpointer(struct compress *compress,
 		unsigned int *avail, struct timespec *tstamp)
 {
 	struct snd_compr_avail kavail;
-	size_t time;
+	__u64 time;
 
 	if (!is_compress_ready(compress))
 		return oops(compress, -ENODEV, "device not ready");
@@ -280,11 +280,10 @@ int compress_get_hpointer(struct compress *compress,
 	if (ioctl(compress->fd, SNDRV_COMPRESS_AVAIL, &kavail))
 		return oops(compress, errno, "cannot get avail");
 	*avail = (unsigned int)kavail.avail;
-
-	time = (kavail.tstamp.pcm_io_frames) / kavail.tstamp.sampling_rate;
+	time = kavail.tstamp.pcm_io_frames / kavail.tstamp.sampling_rate;
 	tstamp->tv_sec = time;
-	time = (kavail.tstamp.pcm_io_frames * 1000000000) / kavail.tstamp.sampling_rate;
-	tstamp->tv_nsec = time;
+	time = kavail.tstamp.pcm_io_frames % kavail.tstamp.sampling_rate;
+	tstamp->tv_nsec = time * 1000000000 / kavail.tstamp.sampling_rate;
 	return 0;
 }
 
