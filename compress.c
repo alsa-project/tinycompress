@@ -286,6 +286,8 @@ int compress_get_hpointer(struct compress *compress,
 
 	if (ioctl(compress->fd, SNDRV_COMPRESS_AVAIL, &kavail))
 		return oops(compress, errno, "cannot get avail");
+	if (0 == kavail.tstamp.sampling_rate)
+		return oops(compress, errno, "invalid paramter");
 	*avail = (unsigned int)kavail.avail;
 	time = kavail.tstamp.pcm_io_frames / kavail.tstamp.sampling_rate;
 	tstamp->tv_sec = time;
