@@ -207,8 +207,10 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 	int rc;
 
 	compress = calloc(1, sizeof(struct compress));
-	if (!compress || !config)
+	if (!compress || !config) {
+		oops(&bad_compress, errno, "cannot allocate compress object");
 		return &bad_compress;
+	}
 
 	compress->config = config;
 
