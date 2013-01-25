@@ -75,7 +75,7 @@
 #include "sound/compress_offload.h"
 #include "tinycompress/tinycompress.h"
 
-#define COMPR_ERR_MAX 32
+#define COMPR_ERR_MAX 128
 
 struct compress {
 	int fd;
