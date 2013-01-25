@@ -218,18 +218,18 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 
 	compress->flags = flags;
 	if (!((flags & COMPRESS_OUT) || (flags & COMPRESS_IN))) {
-		oops(compress, -EINVAL, "can't deduce device direction from given flags\n");
+		oops(&bad_compress, -EINVAL, "can't deduce device direction from given flags\n");
 		goto input_fail;
 	}
 	if (flags & COMPRESS_OUT) {
 		/* this should be removed once we have capture tested */
-		oops(compress, -EINVAL, "this version doesnt support capture\n");
+		oops(&bad_compress, -EINVAL, "this version doesnt support capture\n");
 		goto input_fail;
 	}
 
 	compress->fd = open(fn, O_WRONLY);
 	if (compress->fd < 0) {
-		oops(compress, errno, "cannot open device '%s'", fn);
+		oops(&bad_compress, errno, "cannot open device '%s'", fn);
 		goto input_fail;
 	}
 #if 0
@@ -237,14 +237,14 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 	 * and treat in no support case
 	 */
 	if (_is_codec_supported(compress, config) == false) {
-		oops(compress, errno, "codec not supported\n");
+		oops(&bad_compress, errno, "codec not supported\n");
 		goto codec_fail;
 	}
 #endif
 	fill_compress_params(config, &params);
 
 	if (ioctl(compress->fd, SNDRV_COMPRESS_SET_PARAMS, &params)) {
-		oops(compress, errno, "cannot set device");
+		oops(&bad_compress, errno, "cannot set device");
 		goto codec_fail;
 	}
 
