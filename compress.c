@@ -211,25 +211,28 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 		return &bad_compress;
 	}
 
-	compress->config = config;
+	compress->config = calloc(1, sizeof(*config));
+	if (!compress->config)
+		goto input_fail;
+	memcpy(compress->config, config, sizeof(*compress->config));
 
 	snprintf(fn, sizeof(fn), "/dev/snd/comprC%uD%u", card, device);
 
 	compress->flags = flags;
 	if (!((flags & COMPRESS_OUT) || (flags & COMPRESS_IN))) {
 		oops(&bad_compress, -EINVAL, "can't deduce device direction from given flags");
-		goto input_fail;
+		goto config_fail;
 	}
 	if (flags & COMPRESS_OUT) {
 		/* this should be removed once we have capture tested */
 		oops(&bad_compress, -EINVAL, "this version doesnt support capture");
-		goto input_fail;
+		goto config_fail;
 	}
 
 	compress->fd = open(fn, O_WRONLY);
 	if (compress->fd < 0) {
 		oops(&bad_compress, errno, "cannot open device '%s'", fn);
-		goto input_fail;
+		goto config_fail;
 	}
 #if 0
 	/* FIXME need to turn this On when DSP supports
@@ -252,6 +255,8 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 codec_fail:
 	close(compress->fd);
 	compress->fd = -1;
+config_fail:
+	free(compress->config);
 input_fail:
 	free(compress);
 	return &bad_compress;
@@ -266,6 +271,7 @@ void compress_close(struct compress *compress)
 		close(compress->fd);
 	compress->running = 0;
 	compress->fd = -1;
+	free(compress->config);
 	free(compress);
 }
 
@@ -300,7 +306,6 @@ int compress_write(struct compress *compress, char *buf, unsigned int size)
 		return oops(compress, -ENODEV, "device not ready");
 	fds.fd = compress->fd;
 	fds.events = POLLOUT;
-
 
 	/*TODO: treat auto start here first */
 	while (size) {
