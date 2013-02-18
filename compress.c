@@ -83,7 +83,7 @@ struct compress {
 	__u64 buffer_size;
 	char error[COMPR_ERR_MAX];
 	struct compr_config *config;
-	int running:1;
+	unsigned int running:1;
 };
 
 static int oops(struct compress *compress, int e, const char *fmt, ...)
