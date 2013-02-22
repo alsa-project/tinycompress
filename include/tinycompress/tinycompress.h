@@ -73,6 +73,7 @@ struct compr_config {
 #define COMPRESS_IN         0x10000000
 
 struct compress;
+struct snd_compr_tstamp;
 
 /*
  * compress_open: open a new compress stream
@@ -103,6 +104,19 @@ void compress_close(struct compress *compress);
  */
 int compress_get_hpointer(struct compress *compress,
 		unsigned int *avail, struct timespec *tstamp);
+
+
+/*
+ * compress_get_tstamp: get the raw hw timestamp
+ * return 0 on success, negative on error
+ *
+ * @compress: compress stream on which query is made
+ * @samples: number of decoded samples played
+ * @sampling_rate: sampling rate of decoded samples
+ */
+int compress_get_tstamp(struct compress *compress,
+		unsigned long *samples, unsigned int *sampling_rate);
+
 /*
  * compress_write: write data to the compress stream
  * return bytes written on success, negative on error

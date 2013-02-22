@@ -296,6 +296,22 @@ int compress_get_hpointer(struct compress *compress,
 	return 0;
 }
 
+int compress_get_tstamp(struct compress *compress,
+			unsigned long *samples, unsigned int *sampling_rate)
+{
+	struct snd_compr_tstamp ktstamp;
+
+	if (!is_compress_ready(compress))
+		return oops(compress, -ENODEV, "device not ready");
+
+	if (ioctl(compress->fd, SNDRV_COMPRESS_TSTAMP, &ktstamp))
+		return oops(compress, errno, "cannot get tstamp");
+
+	*samples = ktstamp.pcm_io_frames;
+	*sampling_rate = ktstamp.sampling_rate;
+	return 0;
+}
+
 int compress_write(struct compress *compress, char *buf, unsigned int size)
 {
 	struct snd_compr_avail avail;
