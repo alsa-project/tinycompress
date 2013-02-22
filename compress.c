@@ -123,19 +123,14 @@ int is_compress_ready(struct compress *compress)
 	return (compress->fd > 0) ? 1 : 0;
 }
 
-static bool _is_codec_supported(struct compress *compress, struct compr_config *config)
+static bool _is_codec_supported(struct compress *compress, struct compr_config *config,
+				const struct snd_compr_caps *caps)
 {
-	struct snd_compr_caps caps;
 	bool codec = false;
 	unsigned int i;
 
-	if (ioctl(compress->fd, SNDRV_COMPRESS_GET_CAPS, &caps)) {
-		oops(compress, errno, "cannot get device caps");
-		return false;
-	}
-
-	for (i = 0; i < caps.num_codecs; i++) {
-		if (caps.codecs[i] == config->codec->id) {
+	for (i = 0; i < caps->num_codecs; i++) {
+		if (caps->codecs[i] == config->codec->id) {
 			/* found the codec */
 			codec = true;
 			break;
@@ -146,24 +141,24 @@ static bool _is_codec_supported(struct compress *compress, struct compr_config *
 		return false;
 	}
 
-	if (config->fragment_size < caps.min_fragment_size) {
+	if (config->fragment_size < caps->min_fragment_size) {
 		oops(compress, -EINVAL, "requested fragment size %d is below min supported %d",
-				config->fragment_size, caps.min_fragment_size);
+			config->fragment_size, caps->min_fragment_size);
 		return false;
 	}
-	if (config->fragment_size > caps.max_fragment_size) {
+	if (config->fragment_size > caps->max_fragment_size) {
 		oops(compress, -EINVAL, "requested fragment size %d is above max supported %d",
-				config->fragment_size, caps.max_fragment_size);
+			config->fragment_size, caps->max_fragment_size);
 		return false;
 	}
-	if (config->fragments < caps.min_fragments) {
+	if (config->fragments < caps->min_fragments) {
 		oops(compress, -EINVAL, "requested fragments %d are below min supported %d",
-				config->fragments, caps.min_fragments);
+			config->fragments, caps->min_fragments);
 		return false;
 	}
-	if (config->fragments > caps.max_fragments) {
+	if (config->fragments > caps->max_fragments) {
 		oops(compress, -EINVAL, "requested fragments %d are above max supported %d",
-				config->fragments, caps.max_fragments);
+			config->fragments, caps->max_fragments);
 		return false;
 	}
 
@@ -206,6 +201,7 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 {
 	struct compress *compress;
 	struct snd_compr_params params;
+	struct snd_compr_caps caps;
 	char fn[256];
 
 	compress = calloc(1, sizeof(struct compress));
@@ -239,12 +235,24 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 		oops(&bad_compress, errno, "cannot open device '%s'", fn);
 		goto config_fail;
 	}
+
+	if (ioctl(compress->fd, SNDRV_COMPRESS_GET_CAPS, &caps)) {
+		oops(compress, errno, "cannot get device caps");
+		goto codec_fail;
+	}
+
+	/* If caller passed "don't care" fill in default values */
+	if ((config->fragment_size == 0) || (config->fragments == 0)) {
+		config->fragment_size = caps.min_fragment_size;
+		config->fragments = caps.max_fragments;
+	}
+
 #if 0
 	/* FIXME need to turn this On when DSP supports
 	 * and treat in no support case
 	 */
-	if (_is_codec_supported(compress, config) == false) {
-		oops(&bad_compress, errno, "codec not supported");
+	if (_is_codec_supported(compress, config, &caps) == false) {
+		oops(compress, errno, "codec not supported\n");
 		goto codec_fail;
 	}
 #endif

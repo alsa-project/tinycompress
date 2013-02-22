@@ -58,6 +58,8 @@ extern "C" {
 #endif
 /*
  * struct compr_config: config structure, needs to be filled by app
+ * If fragment_size or fragments are zero, this means "don't care"
+ * and tinycompress will choose values that the driver supports
  *
  * @fragment_size: size of fragment requested, in bytes
  * @fragments: number of fragments
@@ -78,11 +80,14 @@ struct snd_compr_tstamp;
 /*
  * compress_open: open a new compress stream
  * returns the valid struct compress on success, NULL on failure
+ * If config does not specify a requested fragment size, on return
+ * it will be updated with the size and number of fragments that
+ * were configured
  *
  * @card: sound card number
  * @device: device number
  * @flags: device flags can be COMPRESS_OUT or COMPRESS_IN
- * @config: stream config requested
+ * @config: stream config requested. Returns actual fragment config
  */
 struct compress *compress_open(unsigned int card, unsigned int device,
 		unsigned int flags, struct compr_config *config);
