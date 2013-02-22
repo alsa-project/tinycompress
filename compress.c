@@ -312,11 +312,12 @@ int compress_get_tstamp(struct compress *compress,
 	return 0;
 }
 
-int compress_write(struct compress *compress, char *buf, unsigned int size)
+int compress_write(struct compress *compress, const void *buf, unsigned int size)
 {
 	struct snd_compr_avail avail;
 	struct pollfd fds;
 	int to_write, written, total = 0, ret;
+	const char* cbuf = buf;
 
 	if (!(compress->flags & COMPRESS_IN))
 		return oops(compress, -EINVAL, "Invalid flag set");
@@ -355,12 +356,12 @@ int compress_write(struct compress *compress, char *buf, unsigned int size)
 			to_write =  avail.avail;
 		else
 			to_write = size;
-		written = write(compress->fd, buf, to_write);
+		written = write(compress->fd, cbuf, to_write);
 		if (written < 0)
 			return oops(compress, errno, "write failed!");
 
 		size -= written;
-		buf += written;
+		cbuf += written;
 		total += written;
 	}
 	return total;

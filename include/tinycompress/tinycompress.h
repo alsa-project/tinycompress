@@ -126,7 +126,7 @@ int compress_get_tstamp(struct compress *compress,
  * @buf: pointer to data
  * @size: number of bytes to be written
  */
-int compress_write(struct compress *compress, char *buf, unsigned int size);
+int compress_write(struct compress *compress, const void *buf, unsigned int size);
 
 /*
  * compress_read: read data from the compress stream
