@@ -152,9 +152,9 @@ static int print_time(struct compress *compress)
 int main(int argc, char **argv)
 {
 	char *file;
-	unsigned long buffer_size = 100*1024;
+	unsigned long buffer_size = 0;
 	int c;
-	unsigned int card = 0, device = 0, frag = 4;
+	unsigned int card = 0, device = 0, frag = 0;
 
 
 	if (argc < 2)
@@ -276,8 +276,14 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 	codec.level = 0;
 	codec.ch_mode = 0;
 	codec.format = 0;
-	config.fragment_size = buffer_size/frag;
-	config.fragments = frag;
+	if ((buffer_size != 0) && (frag != 0)) {
+		config.fragment_size = buffer_size/frag;
+		config.fragments = frag;
+	} else {
+		/* use driver defaults */
+		config.fragment_size = 0;
+		config.fragments = 0;
+	}
 	config.codec = &codec;
 
 	compress = compress_open(card, device, COMPRESS_IN, &config);
