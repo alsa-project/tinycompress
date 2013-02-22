@@ -82,7 +82,7 @@ struct compress {
 	unsigned int flags;
 	char error[COMPR_ERR_MAX];
 	struct compr_config *config;
-	unsigned int running:1;
+	int running;
 };
 
 static int oops(struct compress *compress, int e, const char *fmt, ...)
