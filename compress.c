@@ -403,7 +403,7 @@ int compress_pause(struct compress *compress)
 int compress_resume(struct compress *compress)
 {
 	if (ioctl(compress->fd, SNDRV_COMPRESS_RESUME))
-		return oops(compress, errno, "cannot pause the stream");
+		return oops(compress, errno, "cannot resume the stream");
 	return 0;
 }
 
