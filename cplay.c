@@ -206,7 +206,7 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 	FILE *file;
 	char *buffer;
 	int size, num_read, wrote;
-	unsigned int i, channels, rate, bits;
+	unsigned int channels, rate, bits;
 
 	if (verbose)
 		printf("%s: entry\n", __func__);
