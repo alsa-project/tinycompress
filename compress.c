@@ -340,10 +340,13 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 		if (avail.avail < compress->config.fragment_size) {
 			/* nothing to write so wait */
 			ret = poll(&fds, 1, compress->max_poll_wait_ms);
+			/* A pause will cause -EBADFD or zero return from driver
+			 * This is not an error, just stop writing
+			 */
+			if ((ret == 0) || (ret == -EBADFD))
+				break;
 			if (ret < 0)
 				return oops(compress, errno, "poll error");
-			if (ret == 0)
-				return oops(compress, -EPIPE, "Poll timeout, Broken Pipe");
 			if (fds.revents & POLLOUT) {
 				if (ioctl(compress->fd, SNDRV_COMPRESS_AVAIL, &avail))
 					return oops(compress, errno, "cannot get avail");
@@ -362,6 +365,9 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 		else
 			to_write = size;
 		written = write(compress->fd, cbuf, to_write);
+		/* If play was paused the write returns -EBADFD */
+		if (written == -EBADFD)
+			break;
 		if (written < 0)
 			return oops(compress, errno, "write failed!");
 
