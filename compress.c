@@ -66,6 +66,7 @@
 #include <sys/time.h>
 #include <limits.h>
 
+#include <linux/types.h>
 #include <linux/ioctl.h>
 #define __force
 #define __bitwise

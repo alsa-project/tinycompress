@@ -51,6 +51,8 @@
  * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <stdint.h>
+#include <linux/types.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
@@ -60,6 +62,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <getopt.h>
+#include <sys/time.h>
 #define __force
 #define __bitwise
 #define __user
