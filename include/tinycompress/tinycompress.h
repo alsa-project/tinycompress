@@ -190,6 +190,16 @@ int compress_drain(struct compress *compress);
 bool is_codec_supported(unsigned int card, unsigned int device,
 	       unsigned int flags, struct snd_codec *codec);
 
+/*
+ * compress_set_max_poll_wait: set the maximum time tinycompress
+ * will wait for driver to signal a poll(). Interval is in
+ * milliseconds.
+ * Pass interval of -1 to disable timeout and make poll() wait
+ * until driver signals.
+ * If this function is not used the timeout defaults to 20 seconds.
+ */
+void compress_set_max_poll_wait(struct compress *compress, int milliseconds);
+
 int is_compress_running(struct compress *compress);
 
 int is_compress_ready(struct compress *compress);

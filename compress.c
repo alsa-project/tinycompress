@@ -77,12 +77,16 @@
 
 #define COMPR_ERR_MAX 128
 
+/* Default maximum time we will wait in a poll() - 20 seconds */
+#define DEFAULT_MAX_POLL_WAIT_MS    20000
+
 struct compress {
 	int fd;
 	unsigned int flags;
 	char error[COMPR_ERR_MAX];
 	struct compr_config *config;
 	int running;
+	int max_poll_wait_ms;
 };
 
 static int oops(struct compress *compress, int e, const char *fmt, ...)
@@ -217,6 +221,8 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 
 	snprintf(fn, sizeof(fn), "/dev/snd/comprC%uD%u", card, device);
 
+	compress->max_poll_wait_ms = DEFAULT_MAX_POLL_WAIT_MS;
+
 	compress->flags = flags;
 	if (!((flags & COMPRESS_OUT) || (flags & COMPRESS_IN))) {
 		oops(&bad_compress, -EINVAL, "can't deduce device direction from given flags");
@@ -331,9 +337,9 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 			return oops(compress, errno, "cannot get avail");
 
 		/* we will write only when avail > fragment size */
-		if (avail.avail < compress->config->fragment_size) {
-			/* nothing to write so wait for 10secs */
-			ret = poll(&fds, 1, 1000000);
+		if (avail.avail < compress->config.fragment_size) {
+			/* nothing to write so wait */
+			ret = poll(&fds, 1, compress->max_poll_wait_ms);
 			if (ret < 0)
 				return oops(compress, errno, "poll error");
 			if (ret == 0)
@@ -439,5 +445,10 @@ bool is_codec_supported(unsigned int card, unsigned int device,
 
 	close(fd);
 	return ret;
+}
+
+void compress_set_max_poll_wait(struct compress *compress, int milliseconds)
+{
+	compress->max_poll_wait_ms = milliseconds;
 }
 
