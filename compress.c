@@ -88,6 +88,8 @@ struct compress {
 	struct compr_config *config;
 	int running;
 	int max_poll_wait_ms;
+	unsigned int gapless_metadata;
+	unsigned int next_track;
 };
 
 static int oops(struct compress *compress, int e, const char *fmt, ...)
@@ -122,6 +124,17 @@ int is_compress_running(struct compress *compress)
 int is_compress_ready(struct compress *compress)
 {
 	return (compress->fd > 0) ? 1 : 0;
+}
+
+static int get_compress_version(struct compress *compress)
+{
+	int version = 0;
+
+	if (ioctl(compress->fd, SNDRV_COMPRESS_IOCTL_VERSION, &version)) {
+		oops(compress, errno, "cant read version");
+		return -1;
+	}
+	return version;
 }
 
 static bool _is_codec_supported(struct compress *compress, struct compr_config *config,
@@ -211,6 +224,8 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 		return &bad_compress;
 	}
 
+	compress->next_track = 0;
+	compress->gapless_metadata = 0;
 	compress->config = calloc(1, sizeof(*config));
 	if (!compress->config)
 		goto input_fail;
@@ -433,6 +448,62 @@ int compress_drain(struct compress *compress)
 		return oops(compress, -ENODEV, "device not ready");
 	if (ioctl(compress->fd, SNDRV_COMPRESS_DRAIN))
 		return oops(compress, errno, "cannot drain the stream");
+	return 0;
+}
+
+int compress_partial_drain(struct compress *compress)
+{
+	if (!is_compress_running(compress))
+		return oops(compress, -ENODEV, "device not ready");
+
+	if (!compress->next_track)
+		return oops(compress, -EPERM, "next track not signalled");
+	if (ioctl(compress->fd, SNDRV_COMPRESS_PARTIAL_DRAIN))
+		return oops(compress, errno, "cannot drain the stream\n");
+	compress->next_track = 0;
+	return 0;
+}
+
+int compress_next_track(struct compress *compress)
+{
+	if (!is_compress_running(compress))
+		return oops(compress, -ENODEV, "device not ready");
+
+	if (!compress->gapless_metadata)
+		return oops(compress, -EPERM, "metadata not set");
+	if (ioctl(compress->fd, SNDRV_COMPRESS_NEXT_TRACK))
+		return oops(compress, errno, "cannot set next track\n");
+	compress->next_track = 1;
+	compress->gapless_metadata = 0;
+	return 0;
+}
+
+int compress_set_gapless_metadata(struct compress *compress,
+	struct compr_gapless_mdata *mdata)
+{
+	struct snd_compr_metadata metadata;
+	int version;
+
+	if (!is_compress_ready(compress))
+		return oops(compress, -ENODEV, "device not ready");
+
+	version = get_compress_version(compress);
+	if (version <= 0)
+		return -1;
+
+	if (version < SNDRV_PROTOCOL_VERSION(0, 1, 1))
+		return oops(compress, -ENXIO, "gapless apis not supported in kernel");
+
+	metadata.key = SNDRV_COMPRESS_ENCODER_PADDING;
+	metadata.value[0] = mdata->encoder_padding;
+	if (ioctl(compress->fd, SNDRV_COMPRESS_SET_METADATA, &metadata))
+		return oops(compress, errno, "can't set metadata for stream\n");
+
+	metadata.key = SNDRV_COMPRESS_ENCODER_DELAY;
+	metadata.value[0] = mdata->encoder_delay;
+	if (ioctl(compress->fd, SNDRV_COMPRESS_SET_METADATA, &metadata))
+		return oops(compress, errno, "can't set metadata for stream\n");
+	compress->gapless_metadata = 1;
 	return 0;
 }
 
