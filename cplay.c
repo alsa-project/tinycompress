@@ -337,7 +337,7 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 				goto BUF_EXIT;
 			}
 			if (wrote != num_read) {
-				/* TODO: Buufer pointer needs to be set here */
+				/* TODO: Buffer pointer needs to be set here */
 				fprintf(stderr, "We wrote %d, DSP accepted %d\n", num_read, wrote);
 			}
 			if (verbose) {
@@ -348,7 +348,7 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 	} while (num_read > 0);
 
 	if (verbose)
-		printf("%s: exit sucess\n", __func__);
+		printf("%s: exit success\n", __func__);
 	/* issue drain if it supports */
 	compress_drain(compress);
 	free(buffer);
