@@ -76,7 +76,7 @@ struct compr_gapless_mdata {
 	__u32 encoder_padding;
 };
 
-#define COMPRESS_OUT        0x00000000
+#define COMPRESS_OUT        0x20000000
 #define COMPRESS_IN         0x10000000
 
 struct compress;

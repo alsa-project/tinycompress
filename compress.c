@@ -240,13 +240,12 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 		oops(&bad_compress, -EINVAL, "can't deduce device direction from given flags");
 		goto config_fail;
 	}
-	if (flags & COMPRESS_OUT) {
-		/* this should be removed once we have capture tested */
-		oops(&bad_compress, -EINVAL, "this version doesnt support capture");
-		goto config_fail;
-	}
 
-	compress->fd = open(fn, O_WRONLY);
+	if (flags & COMPRESS_OUT) {
+		compress->fd = open(fn, O_RDONLY);
+	} else {
+		compress->fd = open(fn, O_WRONLY);
+	}
 	if (compress->fd < 0) {
 		oops(&bad_compress, errno, "cannot open device '%s'", fn);
 		goto config_fail;
@@ -403,7 +402,60 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 
 int compress_read(struct compress *compress, void *buf, unsigned int size)
 {
-	return oops(compress, -ENOTTY, "Not supported yet in lib");
+	struct snd_compr_avail avail;
+	struct pollfd fds;
+	int to_read = 0;
+	int num_read, total = 0, ret;
+	char* cbuf = buf;
+	const unsigned int frag_size = compress->config->fragment_size;
+
+	if (!(compress->flags & COMPRESS_OUT))
+		return oops(compress, -EINVAL, "Invalid flag set");
+	if (!is_compress_ready(compress))
+		return oops(compress, -ENODEV, "device not ready");
+	fds.fd = compress->fd;
+	fds.events = POLLIN;
+
+	while (size) {
+		if (ioctl(compress->fd, SNDRV_COMPRESS_AVAIL, &avail))
+			return oops(compress, errno, "cannot get avail");
+
+		if ( (avail.avail < frag_size) && (avail.avail < size) ) {
+			/* Less than one fragment available and not at the
+			 * end of the read, so poll
+			 */
+			ret = poll(&fds, 1, compress->max_poll_wait_ms);
+			/* A pause will cause -EBADFD or zero.
+			 * This is not an error, just stop reading */
+			if ((ret == 0) || (ret == -EBADFD))
+				break;
+			if (ret < 0)
+				return oops(compress, errno, "poll error");
+			if (fds.revents & POLLIN) {
+				continue;
+			}
+			if (fds.revents & POLLERR) {
+				return oops(compress, -EIO, "poll returned error!");
+			}
+		}
+		/* read avail bytes */
+		if (size > avail.avail)
+			to_read = avail.avail;
+		else
+			to_read = size;
+		num_read = read(compress->fd, cbuf, to_read);
+		/* If play was paused the read returns -EBADFD */
+		if (num_read == -EBADFD)
+			break;
+		if (num_read < 0)
+			return oops(compress, errno, "read failed!");
+
+		size -= num_read;
+		cbuf += num_read;
+		total += num_read;
+	}
+
+	return total;
 }
 
 int compress_start(struct compress *compress)
