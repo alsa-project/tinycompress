@@ -218,8 +218,13 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 	struct snd_compr_caps caps;
 	char fn[256];
 
+	if (!config) {
+		oops(&bad_compress, -EINVAL, "passed bad config");
+		return &bad_compress;
+	}
+
 	compress = calloc(1, sizeof(struct compress));
-	if (!compress || !config) {
+	if (!compress) {
 		oops(&bad_compress, errno, "cannot allocate compress object");
 		return &bad_compress;
 	}
