@@ -226,49 +226,11 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 	codec.id = SND_AUDIOCODEC_MP3;
 	codec.ch_in = channels;
 	codec.ch_out = channels;
-	switch (rate) {
-	case 5512:
-		codec.sample_rate = SNDRV_PCM_RATE_5512;
-		break;
-	case 8000:
-		codec.sample_rate = SNDRV_PCM_RATE_8000;
-		break;
-	case 11025:
-		codec.sample_rate = SNDRV_PCM_RATE_11025;
-		break;
-	case 16000:
-		codec.sample_rate = SNDRV_PCM_RATE_16000;
-		break;
-	case 220500:
-		codec.sample_rate = SNDRV_PCM_RATE_22050;
-		break;
-	case 32000:
-		codec.sample_rate = SNDRV_PCM_RATE_32000;
-		break;
-	case 44100:
-		codec.sample_rate = SNDRV_PCM_RATE_44100;
-		break;
-	case 48000:
-		codec.sample_rate = SNDRV_PCM_RATE_48000;
-		break;
-	case 64000:
-		codec.sample_rate = SNDRV_PCM_RATE_64000;
-		break;
-	case 88200:
-		codec.sample_rate = SNDRV_PCM_RATE_88200;
-		break;
-	case 96000:
-		codec.sample_rate = SNDRV_PCM_RATE_96000;
-		break;
-	case 176400:
-		codec.sample_rate = SNDRV_PCM_RATE_176400;
-		break;
-	case 192000:
-		codec.sample_rate = SNDRV_PCM_RATE_192000;
-		break;
-	default:
-		fprintf(stderr, "unknown sample rate %d\n", rate);
-		goto FILE_EXIT;
+	codec.sample_rate = compress_get_alsa_rate(rate);
+	if (!codec.sample_rate) {
+		fprintf(stderr, "invalid sample rate %d\n", rate);
+		fclose(file);
+		exit(EXIT_FAILURE);
 	}
 	codec.bit_rate = bits;
 	codec.rate_control = 0;
