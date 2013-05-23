@@ -2,7 +2,7 @@ LIB = libtinycompress
 BIN = cplay
 VER = 0.1
 LIBSRC = compress.c
-SRC = cplay.c
+SRC = cplay.c utils.c
 LIBOBJ = ${LIBSRC:.c=.o}
 OBJ = ${SRC:.c=.o}
 

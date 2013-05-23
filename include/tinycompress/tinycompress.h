@@ -267,4 +267,6 @@ const char *compress_get_error(struct compress *compress);
 #define SNDRV_PCM_RATE_176400		(1<<11)		/* 176400Hz */
 #define SNDRV_PCM_RATE_192000		(1<<12)		/* 192000Hz */
 
+/* utility functions */
+unsigned int compress_get_alsa_rate(unsigned int rate);
 #endif
