@@ -88,6 +88,7 @@ struct compress {
 	struct compr_config *config;
 	int running;
 	int max_poll_wait_ms;
+	int nonblocking;
 	unsigned int gapless_metadata;
 	unsigned int next_track;
 };
@@ -372,6 +373,10 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 		 * or there is enough space for all remaining data
 		 */
 		if ((avail.avail < frag_size) && (avail.avail < size)) {
+
+			if (compress->nonblocking)
+				return total;
+
 			ret = poll(&fds, 1, compress->max_poll_wait_ms);
 			/* A pause will cause -EBADFD or zero.
 			 * This is not an error, just stop writing */
@@ -429,6 +434,9 @@ int compress_read(struct compress *compress, void *buf, unsigned int size)
 			/* Less than one fragment available and not at the
 			 * end of the read, so poll
 			 */
+			if (compress->nonblocking)
+				return total;
+
 			ret = poll(&fds, 1, compress->max_poll_wait_ms);
 			/* A pause will cause -EBADFD or zero.
 			 * This is not an error, just stop reading */
@@ -592,5 +600,31 @@ bool is_codec_supported(unsigned int card, unsigned int device,
 void compress_set_max_poll_wait(struct compress *compress, int milliseconds)
 {
 	compress->max_poll_wait_ms = milliseconds;
+}
+
+void compress_nonblock(struct compress *compress, int nonblock)
+{
+	compress->nonblocking = !!nonblock;
+}
+
+int compress_wait(struct compress *compress, int timeout_ms)
+{
+	struct pollfd fds;
+	int ret;
+
+	fds.fd = compress->fd;
+	fds.events = POLLOUT | POLLIN;
+
+	ret = poll(&fds, 1, timeout_ms);
+	/* A pause will cause -EBADFD or zero. */
+	if ((ret < 0) && (ret != -EBADFD))
+		return oops(compress, errno, "poll error");
+	if (fds.revents & (POLLOUT | POLLIN)) {
+		return 0;
+	}
+	if (fds.revents & POLLERR) {
+		return oops(compress, -EIO, "poll returned error!");
+	}
+	return ret;
 }
 

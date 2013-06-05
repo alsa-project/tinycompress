@@ -130,7 +130,15 @@ int compress_get_tstamp(struct compress *compress,
 /*
  * compress_write: write data to the compress stream
  * return bytes written on success, negative on error
- * this is a blocking call
+ * By default this is a blocking call and will not return
+ * until all bytes have been written or there was a
+ * write error.
+ * If non-blocking mode has been enabled with compress_nonblock(),
+ * this function will write all bytes that can be written without
+ * blocking and will then return the number of bytes successfully
+ * written. If the return value is not an error and is < size
+ * the caller can use compress_wait() to block until the driver
+ * is ready for more data.
  *
  * @compress: compress stream to be written to
  * @buf: pointer to data
@@ -141,6 +149,13 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 /*
  * compress_read: read data from the compress stream
  * return bytes read on success, negative on error
+ * By default this is a blocking call and will block until
+ * size bytes have been written or there was a read error.
+ * If non-blocking mode was enabled using compress_nonblock()
+ * the behaviour will change to read only as many bytes as
+ * are currently available (if no bytes are available it
+ * will return immediately). The caller can then use
+ * compress_wait() to block until more bytes are available.
  *
  * @compress: compress stream from where data is to be read
  * @buf: pointer to data buffer
@@ -241,6 +256,12 @@ bool is_codec_supported(unsigned int card, unsigned int device,
  * If this function is not used the timeout defaults to 20 seconds.
  */
 void compress_set_max_poll_wait(struct compress *compress, int milliseconds);
+
+/* Enable or disable non-blocking mode for write and read */
+void compress_nonblock(struct compress *compress, int nonblock);
+
+/* Wait for ring buffer to ready for next read or write */
+int compress_wait(struct compress *compress, int timeout_ms);
 
 int is_compress_running(struct compress *compress);
 
