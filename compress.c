@@ -368,12 +368,10 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 		if (ioctl(compress->fd, SNDRV_COMPRESS_AVAIL, &avail))
 			return oops(compress, errno, "cannot get avail");
 
-		if ( (avail.avail < frag_size)
-			|| ((to_write != 0) && (avail.avail < size)) ) {
-			/* not enough space for one fragment, or we have done
-			 * a short write and there isn't enough space for all
-			 * the remaining data
-			 */
+		/* We can write if we have at least one fragment available
+		 * or there is enough space for all remaining data
+		 */
+		if ((avail.avail < frag_size) && (avail.avail < size)) {
 			ret = poll(&fds, 1, compress->max_poll_wait_ms);
 			/* A pause will cause -EBADFD or zero.
 			 * This is not an error, just stop writing */
