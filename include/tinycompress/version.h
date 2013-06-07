@@ -55,7 +55,7 @@
 
 
 #define TINYCOMPRESS_LIB_MAJOR		0 /* major number of library version */
-#define TINYCOMPRESS_LIB_MINOR		1 /* minor number of library version */
+#define TINYCOMPRESS_LIB_MINOR		2 /* minor number of library version */
 #define TINYCOMPRESS_LIB_SUBMINOR	0 /* subminor number of library version */
 
 /** library version */
@@ -65,6 +65,6 @@
 		  TINYCOMPRESS_LIB_SUBMINOR)
 
 /** library version (string) */
-#define TINYCOMPRESS_LIB_VERSION_STR	"0.1.0"
+#define TINYCOMPRESS_LIB_VERSION_STR	"0.2.0"
 
 #endif
