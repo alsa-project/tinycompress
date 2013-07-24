@@ -623,7 +623,7 @@ int compress_wait(struct compress *compress, int timeout_ms)
 		return 0;
 	}
 	if (fds.revents & POLLERR) {
-		return oops(compress, -EIO, "poll returned error!");
+		return oops(compress, EIO, "poll returned error!");
 	}
 	return ret;
 }
