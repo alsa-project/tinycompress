@@ -378,6 +378,9 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 				return total;
 
 			ret = poll(&fds, 1, compress->max_poll_wait_ms);
+			if (fds.revents & POLLERR) {
+				return oops(compress, EIO, "poll returned error!");
+			}
 			/* A pause will cause -EBADFD or zero.
 			 * This is not an error, just stop writing */
 			if ((ret == 0) || (ret == -EBADFD))
@@ -386,9 +389,6 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 				return oops(compress, errno, "poll error");
 			if (fds.revents & POLLOUT) {
 				continue;
-			}
-			if (fds.revents & POLLERR) {
-				return oops(compress, EIO, "poll returned error!");
 			}
 		}
 		/* write avail bytes */
@@ -438,6 +438,9 @@ int compress_read(struct compress *compress, void *buf, unsigned int size)
 				return total;
 
 			ret = poll(&fds, 1, compress->max_poll_wait_ms);
+			if (fds.revents & POLLERR) {
+				return oops(compress, EIO, "poll returned error!");
+			}
 			/* A pause will cause -EBADFD or zero.
 			 * This is not an error, just stop reading */
 			if ((ret == 0) || (ret == -EBADFD))
@@ -446,9 +449,6 @@ int compress_read(struct compress *compress, void *buf, unsigned int size)
 				return oops(compress, errno, "poll error");
 			if (fds.revents & POLLIN) {
 				continue;
-			}
-			if (fds.revents & POLLERR) {
-				return oops(compress, EIO, "poll returned error!");
 			}
 		}
 		/* read avail bytes */
@@ -616,14 +616,14 @@ int compress_wait(struct compress *compress, int timeout_ms)
 	fds.events = POLLOUT | POLLIN;
 
 	ret = poll(&fds, 1, timeout_ms);
+	if (fds.revents & POLLERR) {
+		return oops(compress, EIO, "poll returned error!");
+	}
 	/* A pause will cause -EBADFD or zero. */
 	if ((ret < 0) && (ret != -EBADFD))
 		return oops(compress, errno, "poll error");
 	if (fds.revents & (POLLOUT | POLLIN)) {
 		return 0;
-	}
-	if (fds.revents & POLLERR) {
-		return oops(compress, EIO, "poll returned error!");
 	}
 	return ret;
 }
