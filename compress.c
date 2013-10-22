@@ -616,15 +616,17 @@ int compress_wait(struct compress *compress, int timeout_ms)
 	fds.events = POLLOUT | POLLIN;
 
 	ret = poll(&fds, 1, timeout_ms);
-	if (fds.revents & POLLERR) {
-		return oops(compress, EIO, "poll returned error!");
+	if (ret > 0) {
+		if (fds.revents & POLLERR)
+			return oops(compress, EIO, "poll returned error!");
+		if (fds.revents & (POLLOUT | POLLIN))
+			return 0;
 	}
-	/* A pause will cause -EBADFD or zero. */
-	if ((ret < 0) && (ret != -EBADFD))
+	if (ret == 0)
+		return oops(compress, ETIME, "poll timed out");
+	if (ret < 0)
 		return oops(compress, errno, "poll error");
-	if (fds.revents & (POLLOUT | POLLIN)) {
-		return 0;
-	}
-	return ret;
+
+	return oops(compress, EIO, "poll signalled unhandled event");
 }
 
