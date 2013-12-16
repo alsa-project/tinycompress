@@ -7,11 +7,19 @@
  ***   structures, and macros generated from the original header, and thus,
  ***   contains no copyrightable information.
  ***
+ ***   To edit the content of this header, modify the corresponding
+ ***   source file (e.g. under external/kernel-headers/original/) then
+ ***   run bionic/libc/kernel/tools/update_all.py
+ ***
+ ***   Any manual change here will be lost the next time this script will
+ ***   be run. You've been warned!
+ ***
  ****************************************************************************
  ****************************************************************************/
 #ifndef __SND_COMPRESS_PARAMS_H
 #define __SND_COMPRESS_PARAMS_H
 
+#include <linux/types.h>
 #define MAX_NUM_CODECS 32
 #define MAX_NUM_CODEC_DESCRIPTORS 32
 #define MAX_NUM_BITRATES 32
@@ -30,6 +38,7 @@
 #define SND_AUDIOCODEC_G723_1 ((__u32) 0x0000000C)
 #define SND_AUDIOCODEC_G729 ((__u32) 0x0000000D)
 
+#define SND_AUDIOCODEC_MAX SND_AUDIOCODEC_G729
 #define SND_AUDIOPROFILE_PCM ((__u32) 0x00000001)
 
 #define SND_AUDIOCHANMODE_MP3_MONO ((__u32) 0x00000001)

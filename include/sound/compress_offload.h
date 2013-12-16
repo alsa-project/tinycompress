@@ -7,17 +7,21 @@
  ***   structures, and macros generated from the original header, and thus,
  ***   contains no copyrightable information.
  ***
+ ***   To edit the content of this header, modify the corresponding
+ ***   source file (e.g. under external/kernel-headers/original/) then
+ ***   run bionic/libc/kernel/tools/update_all.py
+ ***
+ ***   Any manual change here will be lost the next time this script will
+ ***   be run. You've been warned!
+ ***
  ****************************************************************************
  ****************************************************************************/
 #ifndef __COMPRESS_OFFLOAD_H
 #define __COMPRESS_OFFLOAD_H
-
 #include <linux/types.h>
 #include <sound/asound.h>
-//#include <sound/compress_params.h>
-
-#define SNDRV_COMPRESS_VERSION SNDRV_PROTOCOL_VERSION(0, 1, 1)
-
+#include <sound/compress_params.h>
+#define SNDRV_COMPRESS_VERSION SNDRV_PROTOCOL_VERSION(0, 1, 2)
 struct snd_compressed_buffer {
  __u32 fragment_size;
  __u32 fragments;
@@ -32,8 +36,8 @@ struct snd_compr_params {
 struct snd_compr_tstamp {
  __u32 byte_offset;
  __u32 copied_total;
- snd_pcm_uframes_t pcm_frames;
- snd_pcm_uframes_t pcm_io_frames;
+ __u32 pcm_frames;
+ __u32 pcm_io_frames;
  __u32 sampling_rate;
 };
 
@@ -90,6 +94,7 @@ struct snd_compr_metadata {
 #define SNDRV_COMPRESS_DRAIN _IO('C', 0x34)
 #define SNDRV_COMPRESS_NEXT_TRACK _IO('C', 0x35)
 #define SNDRV_COMPRESS_PARTIAL_DRAIN _IO('C', 0x36)
-#define SND_COMPR_TRIGGER_DRAIN 7  
-#define SND_COMPR_TRIGGER_PARTIAL_DRAIN 8
+#define SND_COMPR_TRIGGER_DRAIN 7
+#define SND_COMPR_TRIGGER_NEXT_TRACK 8
+#define SND_COMPR_TRIGGER_PARTIAL_DRAIN 9
 #endif
