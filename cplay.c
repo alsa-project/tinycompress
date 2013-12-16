@@ -226,7 +226,7 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 	codec.id = SND_AUDIOCODEC_MP3;
 	codec.ch_in = channels;
 	codec.ch_out = channels;
-	codec.sample_rate = compress_get_alsa_rate(rate);
+	codec.sample_rate = rate;
 	if (!codec.sample_rate) {
 		fprintf(stderr, "invalid sample rate %d\n", rate);
 		fclose(file);
