@@ -60,37 +60,3 @@
 #define __user
 #include "tinycompress/tinycompress.h"
 
-
-unsigned int compress_get_alsa_rate(unsigned int rate)
-{
-	switch (rate) {
-	case 5512:
-		return SNDRV_PCM_RATE_5512;
-	case 8000:
-		return SNDRV_PCM_RATE_8000;
-	case 11025:
-		return SNDRV_PCM_RATE_11025;
-	case 16000:
-		return SNDRV_PCM_RATE_16000;
-	case 22050:
-		return SNDRV_PCM_RATE_22050;
-	case 32000:
-		return SNDRV_PCM_RATE_32000;
-	case 44100:
-		return SNDRV_PCM_RATE_44100;
-	case 48000:
-		return SNDRV_PCM_RATE_48000;
-	case 64000:
-		return SNDRV_PCM_RATE_64000;
-	case 88200:
-		return SNDRV_PCM_RATE_88200;
-	case 96000:
-		return SNDRV_PCM_RATE_96000;
-	case 176400:
-		return SNDRV_PCM_RATE_176400;
-	case 192000:
-		return SNDRV_PCM_RATE_192000;
-	default:
-		return 0;
-	}
-}
