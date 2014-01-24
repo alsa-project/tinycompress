@@ -74,6 +74,7 @@
 #include "tinycompress/tinycompress.h"
 
 static int verbose;
+static int file;
 
 static const unsigned int DEFAULT_CHANNELS = 1;
 static const unsigned int DEFAULT_RATE = 44100;
@@ -183,6 +184,48 @@ static int print_time(struct compress *compress)
 	return 0;
 }
 
+static int finish_record()
+{
+	struct wave_header header;
+	int ret;
+	size_t nread, written;
+
+	if (!file)
+		return -ENOENT;
+
+	/* Get amount of data written to file */
+	ret = lseek(file, 0, SEEK_END);
+	if (ret < 0)
+		return -errno;
+
+	written = ret;
+	if (written < sizeof(header))
+		return -ENOENT;
+	written -= sizeof(header);
+
+	/* Sync file header from file */
+	ret = lseek(file, 0, SEEK_SET);
+	if (ret < 0)
+		return -errno;
+
+	nread = read(file, &header, sizeof(header));
+	if (nread != sizeof(header))
+		return -errno;
+
+	/* Update file header */
+	ret = lseek(file, 0, SEEK_SET);
+	if (ret < 0)
+		return -errno;
+
+	size_wave_header(&header, written);
+
+	written = write(file, &header, sizeof(header));
+	if (written != sizeof(header))
+		return -errno;
+
+	return 0;
+}
+
 void capture_samples(char *name, unsigned int card, unsigned int device,
 		     unsigned long buffer_size, unsigned int frag,
 		     unsigned int length, unsigned int rate,
@@ -192,7 +235,6 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 	struct snd_codec codec;
 	struct compress *compress;
 	struct wave_header header;
-	int file;
 	char *buffer;
 	size_t written;
 	int read, ret;
@@ -214,7 +256,7 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 	if (verbose)
 		printf("%s: entry, reading %u bytes\n", __func__, length);
 
-	file = open(name, O_WRONLY | O_CREAT);
+	file = open(name, O_RDWR | O_CREAT);
 	if (file == -1) {
 		fprintf(stderr, "Unable to open file '%s'\n", name);
 		exit(EXIT_FAILURE);
@@ -311,17 +353,9 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 		fprintf(stderr, "ERR: %s\n", compress_get_error(compress));
 	}
 
-	/* Update file header now we know file size */
-	size_wave_header(&header, total_read);
-	ret = lseek(file, 0, SEEK_SET);
+	ret = finish_record();
 	if (ret < 0) {
-		fprintf(stderr, "Error seeking: %s\n", strerror(errno));
-		goto buf_exit;
-	}
-	written = write(file, &header, sizeof(header));
-	if (written != sizeof(header)) {
-		fprintf(stderr, "Error updating output file header: %s\n",
-			strerror(errno));
+		fprintf(stderr, "Failed to finish header: %s\n", strerror(ret));
 		goto buf_exit;
 	}
 
@@ -330,6 +364,7 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 
 	free(buffer);
 	close(file);
+	file = 0;
 
 	compress_close(compress);
 
@@ -347,6 +382,16 @@ file_exit:
 	exit(EXIT_FAILURE);
 }
 
+static void sig_handler(int signum __attribute__ ((unused)))
+{
+	finish_record();
+
+	if (file)
+		close(file);
+
+	_exit(EXIT_FAILURE);
+}
+
 int main(int argc, char **argv)
 {
 	char *file;
@@ -355,6 +400,11 @@ int main(int argc, char **argv)
 	unsigned int card = 0, device = 0, frag = 0, length = 0;
 	unsigned int rate = DEFAULT_RATE, channels = DEFAULT_CHANNELS;
 	unsigned int format = DEFAULT_FORMAT;
+
+	if (signal(SIGINT, sig_handler) == SIG_ERR) {
+		fprintf(stderr, "Error registering signal handler\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if (argc < 2)
 		usage();
