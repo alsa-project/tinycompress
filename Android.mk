@@ -20,3 +20,13 @@ LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_EXECUTABLE)
 
+include $(CLEAR_VARS)
+
+LOCAL_C_INCLUDES:= $(LOCAL_PATH)/include
+LOCAL_SRC_FILES:= crec.c
+LOCAL_MODULE := crec
+LOCAL_SHARED_LIBRARIES:= libcutils libutils libtinycompress
+LOCAL_MODULE_TAGS := optional
+
+include $(BUILD_EXECUTABLE)
+

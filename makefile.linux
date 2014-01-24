@@ -1,10 +1,13 @@
 LIB = libtinycompress
-BIN = cplay
 VER = 0.1
 LIBSRC = compress.c
-SRC = cplay.c utils.c
+PLAYBIN = cplay
+RECBIN = crec
+PLAYSRC = cplay.c utils.c
+RECSRC = crec.c utils.c
 LIBOBJ = ${LIBSRC:.c=.o}
-OBJ = ${SRC:.c=.o}
+PLAYOBJ = ${PLAYSRC:.c=.o}
+RECOBJ = ${RECSRC:.c=.o}
 
 CC = gcc
 CROSS_COMPILE =
@@ -13,23 +16,26 @@ CFLAGS += -std=c99 -Wall -Wextra -Wunused -DVERSION=\"${VER}\" -I./include
 LDFLAGS += -L. -ltinycompress
 LIBLDFLAGS = -lasound
 
-all: libtinycompress cplay
+all: libtinycompress cplay crec
 
 $(LIB): ${LIBOBJ}
 	@echo "  LD	"$@
 	@${CROSS_COMPILE}${CC} ${CFLAGS} -shared -Wl,-soname,$@.so -o $@.so ${LIBOBJ} ${LIBLDFLAGS}
 
-$(BIN): ${OBJ} ${LIB}
+$(PLAYBIN): ${PLAYOBJ} ${LIB}
 	@echo "  LD	"$@
-	@${CROSS_COMPILE}${CC} ${CFLAGS} -o $@ ${OBJ} ${LDFLAGS}
+	@${CROSS_COMPILE}${CC} ${CFLAGS} -o $@ ${PLAYOBJ} ${LDFLAGS}
 
+$(RECBIN): ${RECOBJ} ${LIB}
+	@echo "  LD	"$@
+	@${CROSS_COMPILE}${CC} ${CFLAGS} -o $@ ${RECOBJ} ${LDFLAGS}
 
 %.o: %.c
 	@echo "  CC	"$<
 	@${CROSS_COMPILE}${CC} ${CFLAGS} -c -fPIC -o $@ $<
 
 clean:
-	@rm -rf ${BIN} ${OBJ} ${LIB}.so ${LIBOBJ}
+	@rm -rf ${BIN} ${PLAYOBJ} ${RECOBJ} ${LIB}.so ${LIBOBJ}
 
 
 .PHONY: all clean
