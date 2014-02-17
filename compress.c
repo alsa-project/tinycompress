@@ -333,7 +333,7 @@ int compress_get_hpointer(struct compress *compress,
 }
 
 int compress_get_tstamp(struct compress *compress,
-			unsigned long *samples, unsigned int *sampling_rate)
+			unsigned int *samples, unsigned int *sampling_rate)
 {
 	struct snd_compr_tstamp ktstamp;
 

@@ -125,7 +125,7 @@ int compress_get_hpointer(struct compress *compress,
  * @sampling_rate: sampling rate of decoded samples
  */
 int compress_get_tstamp(struct compress *compress,
-		unsigned long *samples, unsigned int *sampling_rate);
+		unsigned int *samples, unsigned int *sampling_rate);
 
 /*
  * compress_write: write data to the compress stream
