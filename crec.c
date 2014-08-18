@@ -66,6 +66,8 @@
 #include <stdbool.h>
 #include <getopt.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #define __force
 #define __bitwise
 #define __user
@@ -256,7 +258,7 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 	if (verbose)
 		printf("%s: entry, reading %u bytes\n", __func__, length);
 
-	file = open(name, O_RDWR | O_CREAT);
+	file = open(name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (file == -1) {
 		fprintf(stderr, "Unable to open file '%s'\n", name);
 		exit(EXIT_FAILURE);
