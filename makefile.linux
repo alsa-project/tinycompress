@@ -9,8 +9,8 @@ LIBOBJ = ${LIBSRC:.c=.o}
 PLAYOBJ = ${PLAYSRC:.c=.o}
 RECOBJ = ${RECSRC:.c=.o}
 
-CC = gcc
-CROSS_COMPILE =
+CROSS_COMPILE ?=
+CC ?= ${CROSS_COMPILE}gcc
 
 CFLAGS += -std=c99 -Wall -Wextra -Wunused -DVERSION=\"${VER}\" -I./include
 LDFLAGS += -L. -ltinycompress
@@ -20,19 +20,19 @@ all: libtinycompress cplay crec
 
 $(LIB): ${LIBOBJ}
 	@echo "  LD	"$@
-	@${CROSS_COMPILE}${CC} ${CFLAGS} -shared -Wl,-soname,$@.so -o $@.so ${LIBOBJ} ${LIBLDFLAGS}
+	@${CC} ${CFLAGS} -shared -Wl,-soname,$@.so -o $@.so ${LIBOBJ} ${LIBLDFLAGS}
 
 $(PLAYBIN): ${PLAYOBJ} ${LIB}
 	@echo "  LD	"$@
-	@${CROSS_COMPILE}${CC} ${CFLAGS} -o $@ ${PLAYOBJ} ${LDFLAGS}
+	@${CC} ${CFLAGS} -o $@ ${PLAYOBJ} ${LDFLAGS}
 
 $(RECBIN): ${RECOBJ} ${LIB}
 	@echo "  LD	"$@
-	@${CROSS_COMPILE}${CC} ${CFLAGS} -o $@ ${RECOBJ} ${LDFLAGS}
+	@${CC} ${CFLAGS} -o $@ ${RECOBJ} ${LDFLAGS}
 
 %.o: %.c
 	@echo "  CC	"$<
-	@${CROSS_COMPILE}${CC} ${CFLAGS} -c -fPIC -o $@ $<
+	@${CC} ${CFLAGS} -c -fPIC -o $@ $<
 
 clean:
 	@rm -rf ${BIN} ${PLAYOBJ} ${RECOBJ} ${LIB}.so ${LIBOBJ}
