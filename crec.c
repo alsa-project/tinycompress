@@ -77,6 +77,8 @@
 
 static int verbose;
 static int file;
+static FILE *finfo;
+static bool streamed;
 
 static const unsigned int DEFAULT_CHANNELS = 1;
 static const unsigned int DEFAULT_RATE = 44100;
@@ -151,7 +153,7 @@ static void size_wave_header(struct wave_header *header, uint32_t size)
 
 static void usage(void)
 {
-	fprintf(stderr, "usage: crec [OPTIONS] filename\n"
+	fprintf(stderr, "usage: crec [OPTIONS] [filename]\n"
 		"-c\tcard number\n"
 		"-d\tdevice node\n"
 		"-b\tbuffer size\n"
@@ -162,6 +164,8 @@ static void usage(void)
 		"-C\tSpecify the number of channels (default %u)\n"
 		"-R\tSpecify the sample rate (default %u)\n"
 		"-F\tSpecify the format: S16_LE, S32_LE (default S16_LE)\n\n"
+		"If filename is not given the output is\n"
+		"written to stdout\n\n"
 		"Example:\n"
 		"\tcrec -c 1 -d 2 test.wav\n"
 		"\tcrec -f 5 test.wav\n",
@@ -180,7 +184,7 @@ static int print_time(struct compress *compress)
 		fprintf(stderr, "ERR: %s\n", compress_get_error(compress));
 		return -1;
 	} else {
-		printf("DSP recorded %jd.%jd\n",
+		fprintf(finfo, "DSP recorded %jd.%jd\n",
 		       (intmax_t)tstamp.tv_sec, (intmax_t)tstamp.tv_nsec*1000);
 	}
 	return 0;
@@ -194,6 +198,10 @@ static int finish_record()
 
 	if (!file)
 		return -ENOENT;
+
+	/* can't rewind if streaming to stdout */
+	if (streamed)
+		return 0;
 
 	/* Get amount of data written to file */
 	ret = lseek(file, 0, SEEK_END);
@@ -256,22 +264,27 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 	length = length * rate * (samplebits / 8) * channels;
 
 	if (verbose)
-		printf("%s: entry, reading %u bytes\n", __func__, length);
-
-	file = open(name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-	if (file == -1) {
-		fprintf(stderr, "Unable to open file '%s'\n", name);
-		exit(EXIT_FAILURE);
-	}
+		fprintf(finfo, "%s: entry, reading %u bytes\n", __func__, length);
+        if (!name) {
+                file = STDOUT_FILENO;
+        } else {
+	        file = open(name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	        if (file == -1) {
+		       fprintf(stderr, "Unable to open file '%s'\n", name);
+		       exit(EXIT_FAILURE);
+	        }
+        }
 
 	/* Write a header, will update with size once record is complete */
-	init_wave_header(&header, channels, rate, samplebits);
-	written = write(file, &header, sizeof(header));
-	if (written != sizeof(header)) {
+        if (!streamed) {
+	    init_wave_header(&header, channels, rate, samplebits);
+	    written = write(file, &header, sizeof(header));
+	    if (written != sizeof(header)) {
 		fprintf(stderr, "Error writing output file header: %s\n",
 			strerror(errno));
 		goto file_exit;
-	}
+	    }
+        }
 
 	memset(&codec, 0, sizeof(codec));
 	memset(&config, 0, sizeof(config));
@@ -299,7 +312,7 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 	};
 
 	if (verbose)
-		printf("%s: Opened compress device\n", __func__);
+		fprintf(finfo, "%s: Opened compress device\n", __func__);
 
 	size = config.fragment_size;
 	buffer = malloc(size * config.fragments);
@@ -308,15 +321,15 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 		goto comp_exit;
 	}
 
-	printf("Recording file %s On Card %u device %u, with buffer of %lu bytes\n",
+	fprintf(finfo, "Recording file %s On Card %u device %u, with buffer of %lu bytes\n",
 	       name, card, device, buffer_size);
-	printf("Format %u Channels %u, %u Hz\n",
-	       codec.id, codec.ch_out, rate);
+	fprintf(finfo, "Codec %u Format %u Channels %u, %u Hz\n",
+	       codec.id, codec.format, codec.ch_out, rate);
 
 	compress_start(compress);
 
 	if (verbose)
-		printf("%s: Capturing audio NOW!!!\n", __func__);
+		fprintf(finfo, "%s: Capturing audio NOW!!!\n", __func__);
 
 	do {
 		if (length && size > length - total_read)
@@ -344,7 +357,7 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 			}
 			if (verbose) {
 				print_time(compress);
-				printf("%s: read %d\n", __func__, read);
+				fprintf(finfo, "%s: read %d\n", __func__, read);
 			}
 		}
 	} while (!length || total_read < length);
@@ -362,7 +375,7 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 	}
 
 	if (verbose)
-		printf("%s: exit success\n", __func__);
+		fprintf(finfo, "%s: exit success\n", __func__);
 
 	free(buffer);
 	close(file);
@@ -379,7 +392,7 @@ file_exit:
 	close(file);
 
 	if (verbose)
-		printf("%s: exit failure\n", __func__);
+		fprintf(finfo, "%s: exit failure\n", __func__);
 
 	exit(EXIT_FAILURE);
 }
@@ -408,7 +421,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (argc < 2)
+	if (argc < 1)
 		usage();
 
 	verbose = 0;
@@ -456,15 +469,21 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	}
-	if (optind >= argc)
-		usage();
-
-	file = argv[optind];
+	if (optind >= argc) {
+		file = NULL;
+		finfo = fopen("/dev/null", "w");
+		streamed = true;
+	} else {
+		file = argv[optind];
+		finfo = stdout;
+		streamed = false;
+	}
 
 	capture_samples(file, card, device, buffer_size, frag, length,
 			rate, channels, format);
 
-	printf("Finish capturing... Close Normally\n");
+	fprintf(finfo, "Finish capturing... Close Normally\n");
+
 	exit(EXIT_SUCCESS);
 }
 
