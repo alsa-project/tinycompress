@@ -383,7 +383,7 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 			}
 			/* A pause will cause -EBADFD or zero.
 			 * This is not an error, just stop writing */
-			if ((ret == 0) || (ret == -EBADFD))
+			if ((ret == 0) || (ret < 0 && errno == EBADFD))
 				break;
 			if (ret < 0)
 				return oops(compress, errno, "poll error");
@@ -397,11 +397,12 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
 		else
 			to_write = size;
 		written = write(compress->fd, cbuf, to_write);
-		/* If play was paused the write returns -EBADFD */
-		if (written == -EBADFD)
-			break;
-		if (written < 0)
+		if (written < 0) {
+			/* If play was paused the write returns -EBADFD */
+			if (errno == EBADFD)
+				break;
 			return oops(compress, errno, "write failed!");
+		}
 
 		size -= written;
 		cbuf += written;
@@ -443,7 +444,7 @@ int compress_read(struct compress *compress, void *buf, unsigned int size)
 			}
 			/* A pause will cause -EBADFD or zero.
 			 * This is not an error, just stop reading */
-			if ((ret == 0) || (ret == -EBADFD))
+			if ((ret == 0) || (ret < 0 && errno == EBADFD))
 				break;
 			if (ret < 0)
 				return oops(compress, errno, "poll error");
@@ -457,11 +458,12 @@ int compress_read(struct compress *compress, void *buf, unsigned int size)
 		else
 			to_read = size;
 		num_read = read(compress->fd, cbuf, to_read);
-		/* If play was paused the read returns -EBADFD */
-		if (num_read == -EBADFD)
-			break;
-		if (num_read < 0)
+		if (num_read < 0) {
+			/* If play was paused the read returns -EBADFD */
+			if (errno == EBADFD)
+				break;
 			return oops(compress, errno, "read failed!");
+		}
 
 		size -= num_read;
 		cbuf += num_read;
