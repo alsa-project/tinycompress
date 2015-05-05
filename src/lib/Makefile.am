@@ -1,5 +1,5 @@
 tinycompressdir = $(libdir)
 
 tinycompress_LTLIBRARIES = libtinycompress.la
-libtinycompress_la_SOURCES = compress.c utils.c
+libtinycompress_la_SOURCES = compress.c
 libtinycompress_la_CFLAGS = -I $(top_builddir)/include
