@@ -1,0 +1,4 @@
+To see author of various changes in this project, please run the below git
+command
+
+$ git log --format='%aN'| sort -u
