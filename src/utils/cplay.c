@@ -207,6 +207,7 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 	char *buffer;
 	int size, num_read, wrote;
 	unsigned int channels, rate, bits;
+	size_t read;
 
 	if (verbose)
 		printf("%s: entry\n", __func__);
@@ -216,7 +217,12 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 		exit(EXIT_FAILURE);
 	}
 
-	fread(&header, sizeof(header), 1, file);
+	read = fread(&header, sizeof(header), 1, file);
+	if (read != sizeof(header)) {
+		fprintf(stderr, "Unable to read header \n");
+		fclose(file);
+		exit(EXIT_FAILURE);
+	}
 
 	if (parse_mp3_header(&header, &channels, &rate, &bits) == -1) {
 		fclose(file);
