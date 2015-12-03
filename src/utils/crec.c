@@ -332,9 +332,6 @@ void capture_samples(char *name, unsigned int card, unsigned int device,
 		fprintf(finfo, "%s: Capturing audio NOW!!!\n", __func__);
 
 	do {
-		if (length && size > length - total_read)
-			size = length - total_read;
-
 		read = compress_read(compress, buffer, size);
 		if (read < 0) {
 			fprintf(stderr, "Error reading sample\n");
