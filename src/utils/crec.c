@@ -110,7 +110,7 @@ struct wave_header {
 	} __attribute__((__packed__)) data;
 } __attribute__((__packed__));
 
-const struct wave_header blank_wave_header = {
+static const struct wave_header blank_wave_header = {
 	.riff = {
 		.chunk = {
 			.desc = "RIFF",
@@ -236,7 +236,7 @@ static int finish_record(void)
 	return 0;
 }
 
-void capture_samples(char *name, unsigned int card, unsigned int device,
+static void capture_samples(char *name, unsigned int card, unsigned int device,
 		     unsigned long buffer_size, unsigned int frag,
 		     unsigned int length, unsigned int rate,
 		     unsigned int channels, unsigned int format)
