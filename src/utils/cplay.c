@@ -97,7 +97,7 @@ struct mp3_header {
 	uint8_t format2;
 };
 
-int parse_mp3_header(struct mp3_header *header, unsigned int *num_channels,
+static int parse_mp3_header(struct mp3_header *header, unsigned int *num_channels,
 		unsigned int *sample_rate, unsigned int *bit_rate)
 {
 	int ver_idx, mp3_version, layer, bit_rate_idx, sample_rate_idx, channel_idx;
@@ -126,7 +126,7 @@ int parse_mp3_header(struct mp3_header *header, unsigned int *num_channels,
 	return 0;
 }
 
-int check_codec_format_supported(unsigned int card, unsigned int device, struct snd_codec *codec)
+static int check_codec_format_supported(unsigned int card, unsigned int device, struct snd_codec *codec)
 {
 	if (is_codec_supported(card, device, COMPRESS_IN, codec) == false) {
 		fprintf(stderr, "Error: This codec or format is not supported by DSP\n");

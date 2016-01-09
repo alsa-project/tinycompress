@@ -63,13 +63,13 @@ extern "C" {
 
 #define MP3_SYNC 0xe0ff
 
-const int mp3_sample_rates[3][3] = {
+static const int mp3_sample_rates[3][3] = {
 	{44100, 48000, 32000},        /* MPEG-1 */
 	{22050, 24000, 16000},        /* MPEG-2 */
 	{11025, 12000,  8000},        /* MPEG-2.5 */
 };
 
-const int mp3_bit_rates[3][3][15] = {
+static const int mp3_bit_rates[3][3][15] = {
 	{
 		/* MPEG-1 */
 		{  0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448}, /* Layer 1 */
