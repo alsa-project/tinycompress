@@ -190,7 +190,7 @@ static int print_time(struct compress *compress)
 	return 0;
 }
 
-static int finish_record()
+static int finish_record(void)
 {
 	struct wave_header header;
 	int ret;
