@@ -1,7 +1,7 @@
 /*
  * BSD LICENSE
  *
- * crec command line recorder for compress audio record in alsa
+ * crecord command line recorder for compress audio record in alsa
  * Copyright (c) 2011-2012, Intel Corporation
  * Copyright (c) 2013-2014, Wolfson Microelectronic Ltd.
  * All rights reserved.
@@ -35,7 +35,7 @@
  *
  * LGPL LICENSE
  *
- * crec command line recorder for compress audio record in alsa
+ * crecord command line recorder for compress audio record in alsa
  * Copyright (c) 2011-2012, Intel Corporation
  * Copyright (c) 2013-2014, Wolfson Microelectronic Ltd.
  *
@@ -153,7 +153,7 @@ static void size_wave_header(struct wave_header *header, uint32_t size)
 
 static void usage(void)
 {
-	fprintf(stderr, "usage: crec [OPTIONS] [filename]\n"
+	fprintf(stderr, "usage: crecord [OPTIONS] [filename]\n"
 		"-c\tcard number\n"
 		"-d\tdevice node\n"
 		"-b\tbuffer size\n"
@@ -167,8 +167,8 @@ static void usage(void)
 		"If filename is not given the output is\n"
 		"written to stdout\n\n"
 		"Example:\n"
-		"\tcrec -c 1 -d 2 test.wav\n"
-		"\tcrec -f 5 test.wav\n",
+		"\tcrecord -c 1 -d 2 test.wav\n"
+		"\tcrecord -f 5 test.wav\n",
 		DEFAULT_CHANNELS, DEFAULT_RATE);
 
 	exit(EXIT_FAILURE);
