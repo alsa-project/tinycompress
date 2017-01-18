@@ -237,9 +237,9 @@ static int finish_record(void)
 }
 
 static void capture_samples(char *name, unsigned int card, unsigned int device,
-		     unsigned long buffer_size, unsigned int frag,
-		     unsigned int length, unsigned int rate,
-		     unsigned int channels, unsigned int format)
+			    unsigned long buffer_size, unsigned int frag,
+			    unsigned int length, unsigned int rate,
+			    unsigned int channels, unsigned int format)
 {
 	struct compr_config config;
 	struct snd_codec codec;
@@ -268,7 +268,8 @@ static void capture_samples(char *name, unsigned int card, unsigned int device,
         if (!name) {
                 file = STDOUT_FILENO;
         } else {
-	        file = open(name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	        file = open(name, O_RDWR | O_CREAT,
+			    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	        if (file == -1) {
 		       fprintf(stderr, "Unable to open file '%s'\n", name);
 		       exit(EXIT_FAILURE);
@@ -466,6 +467,7 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	}
+
 	if (optind >= argc) {
 		file = NULL;
 		finfo = fopen("/dev/null", "w");
@@ -483,4 +485,3 @@ int main(int argc, char **argv)
 
 	exit(EXIT_SUCCESS);
 }
-
