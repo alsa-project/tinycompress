@@ -22,7 +22,8 @@ Http: http://git.alsa-project.org/?p=tinycompress.git
 alsa-devel@alsa-project.org. 
 
 4. LICENSE
-	tinycompress is provided under LGPL and BSD dual license
+	tinycompress is provided under a dual BSD/LGPLv2.1 license.  When using or
+  redistributing tinycompress, you may do so under either license.
 
 5. CREDITS
 - Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com> for library design

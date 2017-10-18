@@ -1,4 +1,7 @@
 /*
+ * This file is provided under a dual BSD/LGPLv2.1 license.  When using or
+ * redistributing this file, you may do so under either license.
+ *
  * BSD LICENSE
  *
  * Copyright (c) 2011-2012, Intel Corporation
