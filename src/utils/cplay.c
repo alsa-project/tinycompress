@@ -220,7 +220,7 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 		exit(EXIT_FAILURE);
 	}
 
-	read = fread(&header, sizeof(header), 1, file);
+	read = fread(&header, 1, sizeof(header), file);
 	if (read != sizeof(header)) {
 		fprintf(stderr, "Unable to read header \n");
 		fclose(file);
