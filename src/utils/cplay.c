@@ -304,7 +304,7 @@ void get_codec_mp3(FILE *file, struct compr_config *config,
 	codec->format = 0;
 }
 
-int get_codec_iec(FILE *file, struct compr_config *config,
+void get_codec_iec(FILE *file, struct compr_config *config,
 		struct snd_codec *codec)
 {
 	codec->id = SND_AUDIOCODEC_IEC61937;
