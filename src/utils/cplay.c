@@ -304,6 +304,22 @@ void get_codec_mp3(FILE *file, struct compr_config *config,
 	codec->format = 0;
 }
 
+int get_codec_iec(FILE *file, struct compr_config *config,
+		struct snd_codec *codec)
+{
+	codec->id = SND_AUDIOCODEC_IEC61937;
+	/* FIXME: cannot get accurate ch_in, any channels may be accepted */
+	codec->ch_in = 2;
+	codec->ch_out = 2;
+	codec->sample_rate = 0;
+	codec->bit_rate = 0;
+	codec->rate_control = 0;
+	codec->profile = SND_AUDIOPROFILE_IEC61937_SPDIF;
+	codec->level = 0;
+	codec->ch_mode = 0;
+	codec->format = 0;
+}
+
 void play_samples(char *name, unsigned int card, unsigned int device,
 		unsigned long buffer_size, unsigned int frag,
 		unsigned long codec_id)
@@ -326,6 +342,9 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 	switch (codec_id) {
 	case SND_AUDIOCODEC_MP3:
 		get_codec_mp3(file, &config, &codec);
+		break;
+	case SND_AUDIOCODEC_IEC61937:
+		get_codec_iec(file, &config, &codec);
 		break;
 	default:
 		fprintf(stderr, "codec ID %d is not supported\n", codec_id);
