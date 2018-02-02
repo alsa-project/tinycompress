@@ -268,27 +268,12 @@ int main(int argc, char **argv)
 	exit(EXIT_SUCCESS);
 }
 
-void play_samples(char *name, unsigned int card, unsigned int device,
-		unsigned long buffer_size, unsigned int frag,
-		unsigned long codec_id)
+void get_codec_mp3(FILE *file, struct compr_config *config,
+		struct snd_codec *codec)
 {
-	struct compr_config config;
-	struct snd_codec codec;
-	struct compress *compress;
-	struct mp3_header header;
-	FILE *file;
-	char *buffer;
-	int size, num_read, wrote;
-	unsigned int channels, rate, bits;
 	size_t read;
-
-	if (verbose)
-		printf("%s: entry\n", __func__);
-	file = fopen(name, "rb");
-	if (!file) {
-		fprintf(stderr, "Unable to open file '%s'\n", name);
-		exit(EXIT_FAILURE);
-	}
+	struct mp3_header header;
+	unsigned int channels, rate, bits;
 
 	read = fread(&header, 1, sizeof(header), file);
 	if (read != sizeof(header)) {
@@ -302,21 +287,51 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 		exit(EXIT_FAILURE);
 	}
 
-	codec.id = SND_AUDIOCODEC_MP3;
-	codec.ch_in = channels;
-	codec.ch_out = channels;
-	codec.sample_rate = rate;
-	if (!codec.sample_rate) {
+	codec->id = SND_AUDIOCODEC_MP3;
+	codec->ch_in = channels;
+	codec->ch_out = channels;
+	codec->sample_rate = rate;
+	if (!codec->sample_rate) {
 		fprintf(stderr, "invalid sample rate %d\n", rate);
 		fclose(file);
 		exit(EXIT_FAILURE);
 	}
-	codec.bit_rate = bits;
-	codec.rate_control = 0;
-	codec.profile = 0;
-	codec.level = 0;
-	codec.ch_mode = 0;
-	codec.format = 0;
+	codec->bit_rate = bits;
+	codec->rate_control = 0;
+	codec->profile = 0;
+	codec->level = 0;
+	codec->ch_mode = 0;
+	codec->format = 0;
+}
+
+void play_samples(char *name, unsigned int card, unsigned int device,
+		unsigned long buffer_size, unsigned int frag,
+		unsigned long codec_id)
+{
+	struct compr_config config;
+	struct snd_codec codec;
+	struct compress *compress;
+	FILE *file;
+	char *buffer;
+	int size, num_read, wrote;
+
+	if (verbose)
+		printf("%s: entry\n", __func__);
+	file = fopen(name, "rb");
+	if (!file) {
+		fprintf(stderr, "Unable to open file '%s'\n", name);
+		exit(EXIT_FAILURE);
+	}
+
+	switch (codec_id) {
+	case SND_AUDIOCODEC_MP3:
+		get_codec_mp3(file, &config, &codec);
+		break;
+	default:
+		fprintf(stderr, "codec ID %d is not supported\n", codec_id);
+		exit(EXIT_FAILURE);
+	}
+
 	if ((buffer_size != 0) && (frag != 0)) {
 		config.fragment_size = buffer_size/frag;
 		config.fragments = frag;
