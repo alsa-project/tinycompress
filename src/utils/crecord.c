@@ -370,15 +370,15 @@ static void capture_samples(char *name, unsigned int card, unsigned int device,
 	if (verbose)
 		fprintf(finfo, "%s: Opened compress device\n", __func__);
 
-	size = config.fragment_size;
-	buffer = malloc(size * config.fragments);
+	size = config.fragments * config.fragment_size;
+	buffer = malloc(size);
 	if (!buffer) {
 		fprintf(stderr, "Unable to allocate %d bytes\n", size);
 		goto comp_exit;
 	}
 
 	fprintf(finfo, "Recording file %s On Card %u device %u, with buffer of %lu bytes\n",
-	       name, card, device, buffer_size);
+	       name, card, device, size);
 	fprintf(finfo, "Codec %u Format %u Channels %u, %u Hz\n",
 	       codec.id, codec.format, codec.ch_out, rate);
 
