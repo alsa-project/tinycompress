@@ -100,20 +100,6 @@ static const struct {
 };
 #define CPLAY_NUM_CODEC_IDS (sizeof(codec_ids) / sizeof(codec_ids[0]))
 
-static const char *codec_name_from_id(unsigned int id)
-{
-	static char hexname[12];
-	int i;
-
-	for (i = 0; i < CPLAY_NUM_CODEC_IDS; ++i) {
-		if (codec_ids[i].id == id)
-			return codec_ids[i].name;
-	}
-
-	snprintf(hexname, sizeof(hexname), "0x%x", id);
-	return hexname; /* a static is safe because we're single-threaded */
-}
-
 static void usage(void)
 {
 	int i;
