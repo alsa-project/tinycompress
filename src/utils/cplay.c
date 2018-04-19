@@ -324,7 +324,7 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 		get_codec_iec(file, &config, &codec);
 		break;
 	default:
-		fprintf(stderr, "codec ID %d is not supported\n", codec_id);
+		fprintf(stderr, "codec ID %ld is not supported\n", codec_id);
 		exit(EXIT_FAILURE);
 	}
 
