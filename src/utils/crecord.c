@@ -377,7 +377,7 @@ static void capture_samples(char *name, unsigned int card, unsigned int device,
 		goto comp_exit;
 	}
 
-	fprintf(finfo, "Recording file %s On Card %u device %u, with buffer of %lu bytes\n",
+	fprintf(finfo, "Recording file %s On Card %u device %u, with buffer of %u bytes\n",
 	       name, card, device, size);
 	fprintf(finfo, "Codec %u Format %u Channels %u, %u Hz\n",
 	       codec.id, codec.format, codec.ch_out, rate);
