@@ -142,49 +142,6 @@ static int get_compress_version(struct compress *compress)
 	return version;
 }
 
-static bool _is_codec_supported(struct compress *compress, struct compr_config *config,
-				const struct snd_compr_caps *caps)
-{
-	bool codec = false;
-	unsigned int i;
-
-	for (i = 0; i < caps->num_codecs; i++) {
-		if (caps->codecs[i] == config->codec->id) {
-			/* found the codec */
-			codec = true;
-			break;
-		}
-	}
-	if (codec == false) {
-		oops(compress, ENXIO, "this codec is not supported");
-		return false;
-	}
-
-	if (config->fragment_size < caps->min_fragment_size) {
-		oops(compress, EINVAL, "requested fragment size %d is below min supported %d",
-			config->fragment_size, caps->min_fragment_size);
-		return false;
-	}
-	if (config->fragment_size > caps->max_fragment_size) {
-		oops(compress, EINVAL, "requested fragment size %d is above max supported %d",
-			config->fragment_size, caps->max_fragment_size);
-		return false;
-	}
-	if (config->fragments < caps->min_fragments) {
-		oops(compress, EINVAL, "requested fragments %d are below min supported %d",
-			config->fragments, caps->min_fragments);
-		return false;
-	}
-	if (config->fragments > caps->max_fragments) {
-		oops(compress, EINVAL, "requested fragments %d are above max supported %d",
-			config->fragments, caps->max_fragments);
-		return false;
-	}
-
-	/* TODO: match the codec properties */
-	return true;
-}
-
 static bool _is_codec_type_supported(int fd, struct snd_codec *codec)
 {
 	struct snd_compr_caps caps;
@@ -270,16 +227,6 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 		config->fragment_size = caps.min_fragment_size;
 		config->fragments = caps.max_fragments;
 	}
-
-#if 0
-	/* FIXME need to turn this On when DSP supports
-	 * and treat in no support case
-	 */
-	if (_is_codec_supported(compress, config, &caps) == false) {
-		oops(compress, errno, "codec not supported\n");
-		goto codec_fail;
-	}
-#endif
 
 	memcpy(compress->config, config, sizeof(*compress->config));
 	fill_compress_params(config, &params);
