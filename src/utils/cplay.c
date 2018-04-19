@@ -165,15 +165,6 @@ static int parse_mp3_header(struct mp3_header *header, unsigned int *num_channel
 	return 0;
 }
 
-static int check_codec_format_supported(unsigned int card, unsigned int device, struct snd_codec *codec)
-{
-	if (is_codec_supported(card, device, COMPRESS_IN, codec) == false) {
-		fprintf(stderr, "Error: This codec or format is not supported by DSP\n");
-		return -1;
-	}
-	return 0;
-}
-
 static int print_time(struct compress *compress)
 {
 	unsigned int avail;
