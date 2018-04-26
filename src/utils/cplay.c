@@ -8,7 +8,7 @@
  * Copyright (c) 2011-2012, Intel Corporation
  * All rights reserved.
  *
- * Author: Vinod Koul <vinod.koul@linux.intel.com>
+ * Author: Vinod Koul <vkoul@kernel.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:

@@ -9,7 +9,7 @@
  * Copyright (c) 2013-2014, Wolfson Microelectronic Ltd.
  * All rights reserved.
  *
- * Author: Vinod Koul <vinod.koul@linux.intel.com>
+ * Author: Vinod Koul <vkoul@kernel.org>
  * Author: Charles Keepax <ckeepax@opensource.wolfsonmicro.com>
  *
  * Redistribution and use in source and binary forms, with or without
