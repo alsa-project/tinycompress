@@ -347,15 +347,15 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 	};
 	if (verbose)
 		printf("%s: Opened compress device\n", __func__);
-	size = config.fragment_size;
-	buffer = malloc(size * config.fragments);
+	size = config.fragments * config.fragment_size;
+	buffer = malloc(size);
 	if (!buffer) {
 		fprintf(stderr, "Unable to allocate %d bytes\n", size);
 		goto COMP_EXIT;
 	}
 
 	/* we will write frag fragment_size and then start */
-	num_read = fread(buffer, 1, size * config.fragments, file);
+	num_read = fread(buffer, 1, size, file);
 	if (num_read > 0) {
 		if (verbose)
 			printf("%s: Doing first buffer write of %d\n", __func__, num_read);
@@ -370,8 +370,8 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 			fprintf(stderr, "We wrote %d, DSP accepted %d\n", num_read, wrote);
 		}
 	}
-	printf("Playing file %s On Card %u device %u, with buffer of %lu bytes\n",
-			name, card, device, buffer_size);
+	printf("Playing file %s On Card %u device %u, with buffer of %d bytes\n",
+			name, card, device, size);
 	printf("Format %u Channels %u, %u Hz, Bit Rate %d\n",
 			codec.id, codec.ch_in, codec.sample_rate, codec.bit_rate);
 
