@@ -1,7 +1,7 @@
 		README for tinycompress
 		=======================
-	       vinod.koul@linux.intel.com
-	       ==========================
+		    vkoul@kernel.org
+	            ================
 
 1. WHAT
 	tinycompress is a userspace library for anyone who wants to use the ALSA
