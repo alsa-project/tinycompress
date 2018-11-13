@@ -366,7 +366,7 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 			goto BUF_EXIT;
 		}
 		if (wrote != num_read) {
-			/* TODO: Buufer pointer needs to be set here */
+			/* TODO: Buffer pointer needs to be set here */
 			fprintf(stderr, "We wrote %d, DSP accepted %d\n", num_read, wrote);
 		}
 	}
