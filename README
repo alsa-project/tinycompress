@@ -17,9 +17,11 @@ the usage of this API. Currently this contains support for playing the mp3 forma
 Git: git clone git://git.alsa-project.org/tinycompress.git
 Http: http://git.alsa-project.org/?p=tinycompress.git
 
+Github: https://github.com/alsa-project/tinycompress
+
 3. PATCHES
 	Please send any enhancements/fixes to alsa developer mailing list at:
-alsa-devel@alsa-project.org. 
+alsa-devel@alsa-project.org OR send a PULL-REQUEST using github
 
 4. LICENSE
 	tinycompress is provided under a dual BSD/LGPLv2.1 license.  When using or
