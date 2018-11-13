@@ -9,7 +9,7 @@ compressed APIs introduced in Linux 3.3
 This library provides the APIs to open a ALSA compressed device and read/write
 compressed data like MP3 etc to it.
 
-	This also includes a utility command line player (cplay) which demonstrates 
+	This also includes a utility command line player (cplay) which demonstrates
 the usage of this API. Currently this contains support for playing the mp3 format
 
 2. WHERE
@@ -29,5 +29,5 @@ alsa-devel@alsa-project.org OR send a PULL-REQUEST using github
 
 5. CREDITS
 - Pierre-Louis Bossart <pierre-louis.bossart@linux.intel.com> for library design
-- Navjot Singh <navjot.singh@intel.com> for writing the mp3 parser code 
+- Navjot Singh <navjot.singh@intel.com> for writing the mp3 parser code
 
