@@ -276,4 +276,8 @@ int is_compress_ready(struct compress *compress);
 /* Returns a human readable reason for the last error */
 const char *compress_get_error(struct compress *compress);
 
+#if defined(__cplusplus)
+} // extern "C"
+#endif
+
 #endif
