@@ -16,6 +16,7 @@ AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
+PKG_INSTALLDIR
 
 # Checks for libraries.
 
@@ -28,5 +29,6 @@ Makefile
 include/Makefile
 src/Makefile
 src/lib/Makefile
-src/utils/Makefile])
+src/utils/Makefile
+tinycompress.pc])
 AC_OUTPUT

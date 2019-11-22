@@ -1,0 +1,11 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libtinycompress
+Description: Tinycompress library for ALSA compress audio offload
+URL: alsa-project.org
+Version: @VERSION@
+Cflags: -I${includedir}/tinycompress
+Libs: -L${libdir} -ltinycompress
