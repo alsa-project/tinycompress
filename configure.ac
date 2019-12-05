@@ -9,6 +9,16 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE(1.10)
 LT_INIT(disable-static)
 
+AC_ARG_ENABLE(fcplay,
+  AS_HELP_STRING([--enable-fcplay], [enable the fcplay component]),
+  [build_fcplay="$enableval"], [build_fcplay="no"])
+
+AM_CONDITIONAL([BUILD_FCPLAY], [test x$build_fcplay = xyes])
+
+#if test "$build_fcplay" = "yes"; then
+#  AC_DEFINE([BUILD_FCPLAY], "1", [Build Fcplay component])
+#fi
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -19,6 +29,11 @@ AM_PROG_CC_C_O
 PKG_INSTALLDIR
 
 # Checks for libraries.
+AS_IF([test "x$build_fcplay" = "xyes"], [
+  PKG_CHECK_MODULES([AVCODEC], [libavcodec >= 3.0.7])
+  PKG_CHECK_MODULES([AVFORMAT], [libavformat >= 3.0.7])
+  PKG_CHECK_MODULES([AVUTIL], [libavutil >= 3.0.7])
+])
 
 # Checks for typedefs, structures, and compiler characteristics.
 
@@ -30,5 +45,6 @@ include/Makefile
 src/Makefile
 src/lib/Makefile
 src/utils/Makefile
+src/utils-lgpl/Makefile
 tinycompress.pc])
 AC_OUTPUT
