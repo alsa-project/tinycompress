@@ -32,8 +32,10 @@ m4/lt~obsolete.m4
 # binary ignores
 cplay
 crecord
+fcplay
 
 # other ignores
 *.patch
 cscope.*
 tags
+tinycompress.pc
