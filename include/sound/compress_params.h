@@ -225,9 +225,9 @@ struct snd_dec_wma {
 
 struct snd_dec_alac {
  __u32 frame_length;
- __u16 compatible_version;
- __u16 max_run;
- __u32 max_frame_bytes;
+ __u8 compatible_version;
+ __u8 pb;
+ __u8 mb;
  __u8 kb;
  __u32 max_run;
  __u32 max_frame_bytes;
