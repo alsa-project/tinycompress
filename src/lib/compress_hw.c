@@ -127,16 +127,22 @@ fill_compress_hw_params(struct compr_config *config, struct snd_compr_params *pa
 	memcpy(&params->codec, config->codec, sizeof(params->codec));
 }
 
-static void *compress_hw_open(unsigned int card, unsigned int device,
+static void *compress_hw_open_by_name(const char *name,
 		unsigned int flags, struct compr_config *config)
 {
 	struct compress_hw_data *compress;
 	struct snd_compr_params params;
 	struct snd_compr_caps caps;
+	unsigned int card, device;
 	char fn[256];
 
 	if (!config) {
 		oops(&bad_compress, EINVAL, "passed bad config");
+		return &bad_compress;
+	}
+
+	if (sscanf(&name[3], "%u,%u", &card, &device) != 2) {
+		oops(&bad_compress, errno, "Invalid device name %s", name);
 		return &bad_compress;
 	}
 
@@ -500,13 +506,17 @@ static int compress_hw_set_gapless_metadata(void *data,
 	return 0;
 }
 
-static bool compress_hw_is_codec_supported(unsigned int card, unsigned int device,
+static bool compress_hw_is_codec_supported_by_name(const char *name,
 		unsigned int flags, struct snd_codec *codec)
 {
+	unsigned int card, device;
 	unsigned int dev_flag;
 	bool ret;
 	int fd;
 	char fn[256];
+
+	if (sscanf(&name[3], "%u,%u", &card, &device) != 2)
+		return false;
 
 	snprintf(fn, sizeof(fn), "/dev/snd/comprC%uD%u", card, device);
 
@@ -564,7 +574,7 @@ static int compress_hw_wait(void *data, int timeout_ms)
 }
 
 struct compress_ops compress_hw_ops = {
-	.open = compress_hw_open,
+	.open_by_name = compress_hw_open_by_name,
 	.close = compress_hw_close,
 	.get_hpointer = compress_hw_get_hpointer,
 	.get_tstamp = compress_hw_get_tstamp,
@@ -581,7 +591,7 @@ struct compress_ops compress_hw_ops = {
 	.set_max_poll_wait = compress_hw_set_max_poll_wait,
 	.set_nonblock = compress_hw_set_nonblock,
 	.wait = compress_hw_wait,
-	.is_codec_supported = compress_hw_is_codec_supported,
+	.is_codec_supported_by_name = compress_hw_is_codec_supported_by_name,
 	.is_compress_running = is_compress_hw_running,
 	.is_compress_ready = is_compress_hw_ready,
 	.get_error = compress_hw_get_error,

@@ -8,8 +8,15 @@
 #include "sound/compress_offload.h"
 #include "tinycompress.h"
 
+/*
+ * struct compress_ops:
+ * ops structure containing ops corresponding to exposed
+ * compress APIs, needs to be implemented by plugin lib for
+ * virtual compress nodes. Real compress node handling is
+ * done in compress_hw.c
+ */
 struct compress_ops {
-	void *(*open)(unsigned int card, unsigned int device,
+	void *(*open_by_name)(const char *name,
 			unsigned int flags, struct compr_config *config);
 	void (*close)(void *compress_data);
 	int (*get_hpointer)(void *compress_data,
@@ -30,7 +37,7 @@ struct compress_ops {
 	void (*set_max_poll_wait)(void *compress_data, int milliseconds);
 	void (*set_nonblock)(void *compress_data, int nonblock);
 	int (*wait)(void *compress_data, int timeout_ms);
-	bool (*is_codec_supported)(unsigned int card, unsigned int device,
+	bool (*is_codec_supported_by_name) (const char *name,
 			unsigned int flags, struct snd_codec *codec);
 	int (*is_compress_running)(void *compress_data);
 	int (*is_compress_ready)(void *compress_data);

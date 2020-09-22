@@ -55,13 +55,21 @@
  * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <dlfcn.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/time.h>
 #include "tinycompress/tinycompress.h"
 #include "tinycompress/compress_ops.h"
 
+#ifndef TINYCOMPRESS_PLUGIN_DIR
+#define TINYCOMPRESS_PLUGIN_DIR "/usr/lib/tinycompress-lib/"
+#endif
+
 struct compress {
 	struct compress_ops *ops;
 	void *data;
+	void *dl_hdl;
 };
 
 extern struct compress_ops compress_hw_ops;
@@ -85,14 +93,86 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 		unsigned int flags, struct compr_config *config)
 {
 	struct compress *compress;
+	char name[128];
 
+	snprintf(name, sizeof(name), "hw:%u,%u", card, device);
 	compress = calloc(1, sizeof(struct compress));
 	if (!compress)
 		return NULL;
 
 	compress->ops = &compress_hw_ops;
-	compress->data =  compress->ops->open(card, device, flags, config);
+	compress->data =  compress->ops->open_by_name(name, flags, config);
 	if (compress->data == NULL) {
+		free(compress);
+		return NULL;
+	}
+	return compress;
+}
+
+static int populate_compress_plugin_ops(struct compress *compress, const char *name)
+{
+	unsigned int ret = -1;
+	char *token, *token_saveptr;
+	char *compr_name;
+	char lib_name[128];
+	void *dl_hdl;
+	const char *err = NULL;
+
+	token = strdup(name);
+	compr_name = strtok_r(token, ":", &token_saveptr);
+
+	snprintf(lib_name, sizeof(lib_name), "%slibtinycompress_module_%s.so", TINYCOMPRESS_PLUGIN_DIR, compr_name);
+
+	free(token);
+	dl_hdl = dlopen(lib_name, RTLD_NOW);
+	if (!dl_hdl) {
+		fprintf(stderr, "%s: unable to open %s, error: %s\n",
+				__func__, lib_name, dlerror());
+		return ret;
+	}
+
+	compress->ops = dlsym(dl_hdl, "compress_plugin_ops");
+	err = dlerror();
+	if (err) {
+		fprintf(stderr, "%s: dlsym to ops failed, err = '%s'\n",
+				__func__, err);
+		dlclose(dl_hdl);
+		return ret;
+	}
+	compress->dl_hdl = dl_hdl;
+	return 0;
+}
+
+/*
+ * Format of name is :
+ * 'hw:<card>,<device>'for hw compress nodes and
+ * '<plugin_name>:<custom_data>' for virtual compress nodes.
+ * It dynamically loads the plugin library whose name is
+ * libtinycompress_module_<plugin_name>.so. Plugin library
+ * needs to implement/expose compress_plugin_ops.
+ */
+struct compress *compress_open_by_name(const char *name,
+			unsigned int flags, struct compr_config *config)
+{
+	struct compress *compress;
+
+	compress = calloc(1, sizeof(struct compress));
+	if (!compress)
+		return NULL;
+
+	if ((name[0] == 'h') || (name[1] == 'w') || (name[2] == ':')) {
+		compress->ops = &compress_hw_ops;
+	} else {
+		if (populate_compress_plugin_ops(compress, name)) {
+			free(compress);
+			return NULL;
+		}
+	}
+
+	compress->data =  compress->ops->open_by_name(name, flags, config);
+	if (compress->data == NULL) {
+		if (compress->dl_hdl)
+			dlclose(compress->dl_hdl);
 		free(compress);
 		return NULL;
 	}
@@ -102,6 +182,9 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 void compress_close(struct compress *compress)
 {
 	compress->ops->close(compress->data);
+	if (compress->dl_hdl)
+		dlclose(compress->dl_hdl);
+
 	free(compress);
 }
 
@@ -172,8 +255,39 @@ bool is_codec_supported(unsigned int card, unsigned int device,
 		unsigned int flags, struct snd_codec *codec)
 {
 	struct compress_ops *ops = &compress_hw_ops;
+	char name[128];
 
-	return ops->is_codec_supported(card, device, flags, codec);
+	snprintf(name, sizeof(name), "hw:%u,%u", card, device);
+
+	return ops->is_codec_supported_by_name(name, flags, codec);
+}
+
+bool is_codec_supported_by_name(const char *name,
+		unsigned int flags, struct snd_codec *codec)
+{
+	struct compress *compress;
+	bool ret;
+
+	compress = calloc(1, sizeof(struct compress));
+	if (!compress)
+		return false;
+
+	if ((name[0] == 'h') || (name[1] == 'w') || (name[2] == ':')) {
+		compress->ops = &compress_hw_ops;
+	} else {
+		if (populate_compress_plugin_ops(compress, name)) {
+			free(compress);
+			return NULL;
+		}
+	}
+
+	ret = compress->ops->is_codec_supported_by_name(name, flags, codec);
+
+	if (compress->dl_hdl)
+		dlclose(compress->dl_hdl);
+	free(compress);
+
+	return ret;
 }
 
 void compress_set_max_poll_wait(struct compress *compress, int milliseconds)
