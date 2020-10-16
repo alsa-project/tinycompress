@@ -104,6 +104,23 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 		unsigned int flags, struct compr_config *config);
 
 /*
+ * compress_open_by_name: open a new compress stream
+ * returns the valid struct compress on success, NULL on failure
+ * If config does not specify a requested fragment size, on return
+ * it will be updated with the size and number of fragments that
+ * were configured.
+ * format of name is :
+ *    hw:<card>,<device> for real hw compress node
+ *    <plugin_libname>:<custom string> for virtual compress node
+ *
+ * @name: name of the compress node
+ * @flags: device flags can be COMPRESS_OUT or COMPRESS_IN
+ * @config: stream config requested. Returns actual fragment config
+ */
+
+struct compress *compress_open_by_name(const char *name,
+		unsigned int flags, struct compr_config *config);
+/*
  * compress_close: close the compress stream
  *
  * @compress: compress stream to be closed
@@ -251,6 +268,20 @@ int compress_set_gapless_metadata(struct compress *compress,
  * @codec: codec type and parameters to be checked
  */
 bool is_codec_supported(unsigned int card, unsigned int device,
+	       unsigned int flags, struct snd_codec *codec);
+
+/*
+ * is_codec_supported_by_name:check if the given codec is supported
+ * returns true when supported, false if not.
+ * format of name is :
+ *    hw:<card>,<device> for real hw compress node
+ *    <plugin_libname>:<custom string> for virtual compress node
+ *
+ * @name: name of the compress node
+ * @flags: stream flags
+ * @codec: codec type and parameters to be checked
+ */
+bool is_codec_supported_by_name(const char *name,
 	       unsigned int flags, struct snd_codec *codec);
 
 /*
