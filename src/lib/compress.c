@@ -117,11 +117,16 @@ static int populate_compress_plugin_ops(struct compress *compress, const char *n
 	char lib_name[128];
 	void *dl_hdl;
 	const char *err = NULL;
+	const char *s;
 
 	token = strdup(name);
 	compr_name = strtok_r(token, ":", &token_saveptr);
 
-	snprintf(lib_name, sizeof(lib_name), "%slibtinycompress_module_%s.so", TINYCOMPRESS_PLUGIN_DIR, compr_name);
+	s = getenv("TINYCOMPRESS_PLUGIN_DIR");
+	if (s == NULL)
+		s = TINYCOMPRESS_PLUGIN_DIR;
+
+	snprintf(lib_name, sizeof(lib_name), "%slibtinycompress_module_%s.so", s, compr_name);
 
 	free(token);
 	dl_hdl = dlopen(lib_name, RTLD_NOW);
