@@ -1,6 +1,6 @@
 bin_PROGRAMS = cplay crecord
 
-cplay_SOURCES = cplay.c
+cplay_SOURCES = cplay.c wave.c
 crecord_SOURCES = crecord.c wave.c
 
 cplay_CFLAGS = -I$(top_srcdir)/include
