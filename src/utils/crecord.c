@@ -113,47 +113,6 @@ static const struct {
 };
 #define CREC_NUM_CODEC_IDS (sizeof(codec_ids) / sizeof(codec_ids[0]))
 
-static const struct wave_header blank_wave_header = {
-	.riff = {
-		.chunk = {
-			.desc = "RIFF",
-		},
-		.format = "WAVE",
-	},
-	.fmt = {
-		.chunk = {
-			.desc = "fmt ", /* Note the space is important here */
-			.size = sizeof(blank_wave_header.fmt) -
-				sizeof(blank_wave_header.fmt.chunk),
-		},
-		.type = 0x01,   /* PCM */
-	},
-	.data = {
-		.chunk = {
-			.desc = "data",
-		},
-	},
-};
-
-static void init_wave_header(struct wave_header *header, uint16_t channels,
-			     uint32_t rate, uint16_t samplebits)
-{
-	memcpy(header, &blank_wave_header, sizeof(blank_wave_header));
-
-	header->fmt.channels = channels;
-	header->fmt.rate = rate;
-	header->fmt.byterate = channels * rate * (samplebits / 8);
-	header->fmt.blockalign = channels * (samplebits / 8);
-	header->fmt.samplebits = samplebits;
-}
-
-static void size_wave_header(struct wave_header *header, uint32_t size)
-{
-	header->riff.chunk.size = sizeof(*header) -
-				  sizeof(header->riff.chunk) + size;
-	header->data.chunk.size = size;
-}
-
 static const char *codec_name_from_id(unsigned int id)
 {
 	static char hexname[12];

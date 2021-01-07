@@ -34,4 +34,8 @@ struct wave_header {
 	} __attribute__((__packed__)) data;
 } __attribute__((__packed__));
 
+void init_wave_header(struct wave_header *header, uint16_t channels,
+		      uint32_t rate, uint16_t samplebits);
+void size_wave_header(struct wave_header *header, uint32_t size);
+
 #endif
