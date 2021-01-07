@@ -77,6 +77,7 @@
 #include "sound/compress_params.h"
 #include "sound/compress_offload.h"
 #include "tinycompress/tinycompress.h"
+#include "tinycompress/tinywave.h"
 
 static int verbose;
 static int file;
@@ -111,32 +112,6 @@ static const struct {
 #endif
 };
 #define CREC_NUM_CODEC_IDS (sizeof(codec_ids) / sizeof(codec_ids[0]))
-
-struct riff_chunk {
-	char desc[4];
-	uint32_t size;
-} __attribute__((__packed__));
-
-struct wave_header {
-	struct {
-		struct riff_chunk chunk;
-		char format[4];
-	} __attribute__((__packed__)) riff;
-
-	struct {
-		struct riff_chunk chunk;
-		uint16_t type;
-		uint16_t channels;
-		uint32_t rate;
-		uint32_t byterate;
-		uint16_t blockalign;
-		uint16_t samplebits;
-	} __attribute__((__packed__)) fmt;
-
-	struct {
-		struct riff_chunk chunk;
-	} __attribute__((__packed__)) data;
-} __attribute__((__packed__));
 
 static const struct wave_header blank_wave_header = {
 	.riff = {
