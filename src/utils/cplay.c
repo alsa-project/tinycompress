@@ -66,12 +66,14 @@
 #include <stdbool.h>
 #include <getopt.h>
 #include <sys/time.h>
+#include <config.h>
 #define __force
 #define __bitwise
 #define __user
 #include "sound/compress_params.h"
 #include "tinycompress/tinycompress.h"
 #include "tinycompress/tinymp3.h"
+#include "tinycompress/tinywave.h"
 
 static int verbose;
 static const unsigned int DEFAULT_CODEC_ID = SND_AUDIOCODEC_PCM;
@@ -245,6 +247,44 @@ int main(int argc, char **argv)
 	exit(EXIT_SUCCESS);
 }
 
+#if ENABLE_PCM
+void get_codec_pcm(FILE *file, struct compr_config *config,
+		   struct snd_codec *codec)
+{
+	size_t read;
+	struct wave_header header;
+	unsigned int channels, rate, format;
+
+	read = fread(&header, 1, sizeof(header), file);
+	if (read != sizeof(header)) {
+		fprintf(stderr, "Unable to read header \n");
+		fclose(file);
+		exit(EXIT_FAILURE);
+	}
+
+	if (parse_wave_header(&header, &channels, &rate, &format) == -1) {
+		fclose(file);
+		exit(EXIT_FAILURE);
+	}
+
+	codec->id = SND_AUDIOCODEC_PCM;
+	codec->ch_in = channels;
+	codec->ch_out = channels;
+	codec->sample_rate = rate;
+	if (!codec->sample_rate) {
+		fprintf(stderr, "invalid sample rate %d\n", rate);
+		fclose(file);
+		exit(EXIT_FAILURE);
+	}
+	codec->bit_rate = 0;
+	codec->rate_control = 0;
+	codec->profile = SND_AUDIOCODEC_PCM;
+	codec->level = 0;
+	codec->ch_mode = 0;
+	codec->format = format;
+}
+#endif
+
 void get_codec_mp3(FILE *file, struct compr_config *config,
 		struct snd_codec *codec)
 {
@@ -317,6 +357,11 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 	}
 
 	switch (codec_id) {
+#if ENABLE_PCM
+	case SND_AUDIOCODEC_PCM:
+		get_codec_pcm(file, &config, &codec);
+		break;
+#endif
 	case SND_AUDIOCODEC_MP3:
 		get_codec_mp3(file, &config, &codec);
 		break;

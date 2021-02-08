@@ -12,12 +12,20 @@ LT_INIT(disable-static)
 AC_ARG_ENABLE(fcplay,
   AS_HELP_STRING([--enable-fcplay], [enable the fcplay component]),
   [build_fcplay="$enableval"], [build_fcplay="no"])
+AC_ARG_ENABLE(pcm,
+  AS_HELP_STRING([--enable-pcm], [enable PCM compress playback support(used for debugging)]),
+  [enable_pcm="$enableval"], [enable_pcm="no"])
 
 AM_CONDITIONAL([BUILD_FCPLAY], [test x$build_fcplay = xyes])
+AM_CONDITIONAL([ENABLE_PCM], [test x$enable_pcm = xyes])
 
 #if test "$build_fcplay" = "yes"; then
 #  AC_DEFINE([BUILD_FCPLAY], "1", [Build Fcplay component])
 #fi
+
+if test "$enable_pcm" = "yes"; then
+  AC_DEFINE([ENABLE_PCM], 1, [Enable PCM compress playback support (used for debugging)])
+fi
 
 # Checks for programs.
 AC_PROG_CXX
