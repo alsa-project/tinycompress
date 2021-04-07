@@ -1,7 +1,7 @@
-//SPDX-License-Identifier: LGPL-2.1-only
+/* SPDX-License-Identifier: LGPL-2.1-only */
 
-//Copyright (c) 2011-2012, Intel Corporation
-//Copyright (c) 2018-2019, Linaro Ltd
+/* Copyright (c) 2011-2012, Intel Corporation */
+/* Copyright (c) 2018-2019, Linaro Ltd */
 
 #include <stdint.h>
 #include <linux/types.h>
