@@ -67,6 +67,7 @@
 #include <getopt.h>
 #include <sys/time.h>
 #include <config.h>
+#include <termios.h>
 #define __force
 #define __bitwise
 #define __user
@@ -75,7 +76,15 @@
 #include "tinycompress/tinymp3.h"
 #include "tinycompress/tinywave.h"
 
-static int verbose;
+enum {
+	DO_NOTHING = -1,
+	DO_PAUSE_PUSH,
+	DO_PAUSE_RELEASE
+};
+
+static int verbose, interactive;
+static bool is_paused = false;
+static long term_c_lflag = -1, stdin_flags = -1;
 static const unsigned int DEFAULT_CODEC_ID = SND_AUDIOCODEC_PCM;
 
 static const struct {
@@ -102,6 +111,99 @@ static const struct {
 };
 #define CPLAY_NUM_CODEC_IDS (sizeof(codec_ids) / sizeof(codec_ids[0]))
 
+static void init_stdin(void)
+{
+	struct termios term;
+	int ret;
+
+	if (!interactive)
+		return;
+
+	ret = tcgetattr(fileno(stdin), &term);
+	if (ret < 0) {
+		fprintf(stderr, "Unable to get terminal attributes.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/* save previous terminal flags */
+	term_c_lflag = term.c_lflag;
+
+	/* save previous stdin flags and add O_NONBLOCK*/
+	stdin_flags = fcntl(fileno(stdin), F_GETFL);
+	if (stdin_flags < 0 || fcntl(fileno(stdin), F_SETFL, stdin_flags|O_NONBLOCK) < 0)
+		fprintf(stderr, "stdin O_NONBLOCK flag setup failed\n");
+
+	/* prepare to enter noncanonical mode */
+	term.c_lflag &= ~ICANON;
+
+	ret = tcsetattr(fileno(stdin), TCSANOW, &term);
+	if (ret < 0) {
+		fprintf(stderr, "Unable to set terminal attributes.\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+static void done_stdin(void)
+{
+	struct termios term;
+	int ret;
+
+	if (!interactive)
+		return;
+
+	if (term_c_lflag == -1 || stdin_flags == -1)
+		return;
+
+	ret = tcgetattr(fileno(stdin), &term);
+	if (ret < 0) {
+		fprintf(stderr, "Unable to get terminal attributes.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/* restore previous terminal attributes */
+	term.c_lflag = term_c_lflag;
+
+	ret = tcsetattr(fileno(stdin), TCSANOW, &term);
+	if (ret < 0) {
+		fprintf(stderr, "Unable to set terminal attributes.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/* restore previous stdin attributes */
+	ret = fcntl(fileno(stdin), F_SETFL, stdin_flags);
+	if (ret < 0) {
+		fprintf(stderr, "Unable to set stdin attributes.\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+static int do_pause(void)
+{
+	unsigned char chr;
+
+	if (!interactive)
+		return DO_NOTHING;
+
+	while (read(fileno(stdin), &chr, 1) == 1) {
+		switch(chr) {
+			case '\r':
+			case ' ':
+				if (is_paused) {
+					fprintf(stderr, "\r=== Resume ===\n");
+					return DO_PAUSE_RELEASE;
+				} else {
+					fprintf(stderr, "\r=== Pause ===\n");
+					return DO_PAUSE_PUSH;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+
+	return DO_NOTHING;
+}
+
 static void usage(void)
 {
 	int i;
@@ -113,6 +215,7 @@ static void usage(void)
 		"-b\tbuffer size\n"
 		"-f\tfragments\n\n"
 		"-v\tverbose mode\n"
+		"-i\tinteractive mode (press SPACE or ENTER for play/pause)\n"
 		"-h\tPrints this help list\n\n"
 		"Example:\n"
 		"\tcplay -c 1 -d 2 test.mp3\n"
@@ -377,7 +480,7 @@ int main(int argc, char **argv)
 		usage();
 
 	verbose = 0;
-	while ((c = getopt(argc, argv, "hvb:f:c:d:I:")) != -1) {
+	while ((c = getopt(argc, argv, "hvb:f:c:d:I:i")) != -1) {
 		switch (c) {
 		case 'h':
 			usage();
@@ -415,6 +518,10 @@ int main(int argc, char **argv)
 			break;
 		case 'v':
 			verbose = 1;
+			break;
+		case 'i':
+			fprintf(stderr, "Interactive mode: ON\n");
+			interactive = 1;
 			break;
 		default:
 			exit(EXIT_FAILURE);
@@ -564,6 +671,30 @@ void get_codec_iec(FILE *file, struct compr_config *config,
 	codec->format = 0;
 }
 
+static int check_stdin(struct compress *compress)
+{
+	switch(do_pause()) {
+		case DO_PAUSE_PUSH:
+			if (compress_pause(compress) != 0) {
+				fprintf(stderr, "Pause ERROR\n");
+				return -1;
+			}
+			is_paused = true;
+			break;
+		case DO_PAUSE_RELEASE:
+			if (compress_resume(compress) != 0) {
+				fprintf(stderr, "Resume ERROR\n");
+				return -1;
+			}
+			is_paused = false;
+			break;
+		case DO_NOTHING:
+			break;
+	}
+
+	return 0;
+}
+
 void play_samples(char *name, unsigned int card, unsigned int device,
 		unsigned long buffer_size, unsigned int frag,
 		unsigned long codec_id)
@@ -582,6 +713,8 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 		fprintf(stderr, "Unable to open file '%s'\n", name);
 		exit(EXIT_FAILURE);
 	}
+
+	init_stdin();
 
 	switch (codec_id) {
 #if ENABLE_PCM
@@ -655,7 +788,14 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 		printf("%s: You should hear audio NOW!!!\n", __func__);
 
 	do {
-		num_read = fread(buffer, 1, size, file);
+		if (check_stdin(compress) != 0)
+			goto BUF_EXIT;
+
+		if (!is_paused)
+			num_read = fread(buffer, 1, size, file);
+		else
+			num_read = 0;
+
 		if (num_read > 0) {
 			wrote = compress_write(compress, buffer, num_read);
 			if (wrote < 0) {
@@ -672,7 +812,7 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 				printf("%s: wrote %d\n", __func__, wrote);
 			}
 		}
-	} while (num_read > 0);
+	} while (num_read > 0 || is_paused == true);
 
 	if (verbose)
 		printf("%s: exit success\n", __func__);
@@ -681,11 +821,13 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 	free(buffer);
 	fclose(file);
 	compress_close(compress);
+	done_stdin();
 	return;
 BUF_EXIT:
 	free(buffer);
 COMP_EXIT:
 	compress_close(compress);
+	done_stdin();
 FILE_EXIT:
 	fclose(file);
 	if (verbose)
