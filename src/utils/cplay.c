@@ -526,6 +526,26 @@ void get_codec_mp3(FILE *file, struct compr_config *config,
 	codec->level = 0;
 	codec->ch_mode = 0;
 	codec->format = 0;
+
+	/* reset file cursor to start
+	 *
+	 * this is done because if we leave it as is
+	 * the program will hang in a poll call waiting
+	 * for ring buffer to empty out.
+	 *
+	 * this never actually happens because of the fact
+	 * that the codec probably expects to receive the
+	 * MP3 header along with its associated MP3 data
+	 * so, if we leave the file cursor positioned at
+	 * the first MP3 data then the codec will most
+	 * likely hang because it's expecting to also get
+	 * the MP3 header
+	 */
+	if (fseek(file, 0, SEEK_SET) < 0) {
+		fprintf(stderr, "Failed to set cursor to start.\n");
+		fclose(file);
+		exit(EXIT_FAILURE);
+	}
 }
 
 void get_codec_iec(FILE *file, struct compr_config *config,
