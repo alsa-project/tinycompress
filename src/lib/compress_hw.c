@@ -119,6 +119,58 @@ static bool _is_codec_type_supported(int fd, struct snd_codec *codec)
 	return found;
 }
 
+static int compress_hw_get_supported_codecs_by_name(const char *name,
+		unsigned int flags, void *codecs, unsigned int size)
+{
+	struct snd_compr_caps caps;
+	unsigned int *codecs_buf = NULL;
+	unsigned int codecs_buf_sz;
+	unsigned int card, device;
+	unsigned int dev_flag;
+	unsigned int num_codecs, i;
+	int fd, ret;
+	char fn[256];
+
+	if (sscanf(&name[3], "%u,%u", &card, &device) != 2)
+		return -EINVAL;
+
+	snprintf(fn, sizeof(fn), "/dev/snd/comprC%uD%u", card, device);
+
+	if (flags & COMPRESS_OUT)
+		dev_flag = O_RDONLY;
+	else
+		dev_flag = O_WRONLY;
+
+	fd = open(fn, dev_flag);
+	if (fd < 0)
+		return oops(&bad_compress, errno, "cannot open device '%s'", fn);
+
+	if (ioctl(fd, SNDRV_COMPRESS_GET_CAPS, &caps)) {
+		close(fd);
+		return oops(&bad_compress, errno, "cannot get device caps");
+	}
+
+	close(fd);
+
+	num_codecs = caps.num_codecs;
+
+	if ((size != 0) && (codecs != NULL)) {
+		codecs_buf_sz = size / sizeof(unsigned int);
+
+		if (num_codecs > codecs_buf_sz)
+			return oops(&bad_compress, EINVAL,
+					"Input not big enough to hold %d available codecs", num_codecs);
+
+		codecs_buf = (unsigned int *)codecs;
+
+		for (i = 0; i < num_codecs; i++) {
+			codecs_buf[i] = caps.codecs[i];
+		}
+	}
+
+	return num_codecs;
+}
+
 static inline void
 fill_compress_hw_params(struct compr_config *config, struct snd_compr_params *params)
 {
@@ -595,5 +647,6 @@ struct compress_ops compress_hw_ops = {
 	.is_compress_running = is_compress_hw_running,
 	.is_compress_ready = is_compress_hw_ready,
 	.get_error = compress_hw_get_error,
+	.get_supported_codecs_by_name = compress_hw_get_supported_codecs_by_name,
 };
 

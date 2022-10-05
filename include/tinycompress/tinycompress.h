@@ -307,6 +307,23 @@ int is_compress_ready(struct compress *compress);
 /* Returns a human readable reason for the last error */
 const char *compress_get_error(struct compress *compress);
 
+/*
+ * compress_get_supported_codecs_by_name: gets the list of supported codecs
+ *
+ * returns number of codecs on success, negative on error
+ *
+ * format of name is :
+ *    hw:<card>,<device> for real hw compress node
+ *    <plugin_libname>:<custom string> for virtual compress node
+ *
+ * @name: name of the compress node
+ * @flags: stream flags
+ * @codecs: Pointer to an array which will hold the list of codecs
+ * @size: Size in bytes of the codecs array
+ */
+int compress_get_supported_codecs_by_name(const char *name, unsigned int flags,
+		unsigned int *codecs, unsigned int size);
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif

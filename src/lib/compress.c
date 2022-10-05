@@ -310,3 +310,30 @@ int compress_wait(struct compress *compress, int timeout_ms)
 	return compress->ops->wait(compress->data, timeout_ms);
 }
 
+int compress_get_supported_codecs_by_name(const char *name, unsigned int flags,
+		unsigned int *codecs, unsigned int size)
+{
+	struct compress *compress;
+	int ret = -1;
+
+	compress = calloc(1, sizeof(struct compress));
+	if (!compress)
+		return ret;
+
+	if ((name[0] == 'h') || (name[1] == 'w') || (name[2] == ':')) {
+		compress->ops = &compress_hw_ops;
+	} else {
+		if (populate_compress_plugin_ops(compress, name)) {
+			free(compress);
+			return ret;
+		}
+	}
+
+	ret = compress->ops->get_supported_codecs_by_name(name, flags, codecs, size);
+
+	if (compress->dl_hdl)
+		dlclose(compress->dl_hdl);
+	free(compress);
+
+	return ret;
+}
