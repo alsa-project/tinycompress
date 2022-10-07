@@ -76,6 +76,9 @@
 #include "tinycompress/tinymp3.h"
 #include "tinycompress/tinywave.h"
 
+#define ID3V2_HEADER_SIZE 10
+#define ID3V2_FILE_IDENTIFIER_SIZE 3
+
 enum {
 	DO_NOTHING = -1,
 	DO_PAUSE_PUSH,
@@ -599,12 +602,94 @@ void get_codec_aac(FILE *file, struct compr_config *config,
 	codec->format = format;
 }
 
+static int skip_id3v2_header(FILE *file)
+{
+	char buffer[ID3V2_HEADER_SIZE + 1];
+	int ret, bytes_read;
+	uint32_t header_size;
+
+	/* we only need to parse ID3v2 header in order to skip
+	 * the whole ID3v2 tag found at the beginning of the file.
+	 *
+	 * ID3v2 header has the following structure(v2.3.0):
+	 *
+	 * 1) file identifier
+	 * 	=> 3 bytes long.
+	 * 	=> has the value of ID3 for ID3v2 tag.
+	 *
+	 * 2) version
+	 * 	=> 2 bytes long.
+	 *
+	 * 3) flags
+	 * 	=> 1 byte long.
+	 *
+	 * 4) size
+	 * 	=> 4 bytes long.
+	 * 	=> the MSB of each byte is 0 so it needs to be ignored
+	 * 	when trying to parse the size.
+	 * 	=> this field doesn't include the 10 bytes which make up
+	 * 	the ID3v2 header so a +10 needs to be added to this
+	 * 	field in order to get the correct position of the end
+	 * 	of the ID3v2 tag.
+	 */
+
+	/* for now, we only support ID3v2 header found at the beginning
+	 * of the file so we need to move file cursor to the beginning
+	 * of the file
+	 */
+	ret = fseek(file, 0, SEEK_SET);
+	if (ret < 0)
+		return ret;
+
+	buffer[ID3V2_HEADER_SIZE] = '\0';
+
+	/* read first ID3V2_HEADER_SIZE chunk */
+	bytes_read = fread(buffer, sizeof(char), ID3V2_HEADER_SIZE, file);
+
+	/* ID3v2 header is 10 bytes long
+	 *
+	 * if we can't read the 10 bytes then there's obviously no
+	 * ID3v2 tag to skip
+	 */
+	if (bytes_read != ID3V2_HEADER_SIZE)
+		return 0;
+
+	/* check if we're dealing with ID3v2 */
+	if (strncmp(buffer, "ID3", ID3V2_FILE_IDENTIFIER_SIZE) != 0)
+		return 0;
+
+	header_size = buffer[9];
+	header_size |= (buffer[8] << 7);
+	header_size |= (buffer[7] << 14);
+	header_size |= (buffer[6] << 21);
+
+	/* the header size field in ID3v2 header doesn't
+	 * include the 10 bytes of which the header is made
+	 * so we need to add them to get the correct position
+	 */
+	return header_size + ID3V2_HEADER_SIZE;
+}
+
 void get_codec_mp3(FILE *file, struct compr_config *config,
 		struct snd_codec *codec)
 {
 	size_t read;
 	struct mp3_header header;
 	unsigned int channels, rate, bits;
+	int offset;
+
+	offset = skip_id3v2_header(file);
+	if (offset < 0) {
+		fprintf(stderr, "Failed to get ID3 tag end position.\n");
+		fclose(file);
+		exit(EXIT_FAILURE);
+	}
+
+	if (fseek(file, offset, SEEK_SET) < 0) {
+		fprintf(stderr, "Unable to seek.\n");
+		fclose(file);
+		exit(EXIT_FAILURE);
+	}
 
 	read = fread(&header, 1, sizeof(header), file);
 	if (read != sizeof(header)) {
@@ -634,7 +719,7 @@ void get_codec_mp3(FILE *file, struct compr_config *config,
 	codec->ch_mode = 0;
 	codec->format = 0;
 
-	/* reset file cursor to start
+	/* reset file cursor to offset position
 	 *
 	 * this is done because if we leave it as is
 	 * the program will hang in a poll call waiting
@@ -648,8 +733,8 @@ void get_codec_mp3(FILE *file, struct compr_config *config,
 	 * likely hang because it's expecting to also get
 	 * the MP3 header
 	 */
-	if (fseek(file, 0, SEEK_SET) < 0) {
-		fprintf(stderr, "Failed to set cursor to start.\n");
+	if (fseek(file, offset, SEEK_SET) < 0) {
+		fprintf(stderr, "Failed to set cursor to offset.\n");
 		fclose(file);
 		exit(EXIT_FAILURE);
 	}
