@@ -13,11 +13,8 @@ compressed data like MP3 etc to it.
 the usage of this API. Currently this contains support for playing the mp3 format
 
 2. WHERE
-	The library can found in alsa-project.org
-Git: git clone git://git.alsa-project.org/tinycompress.git
-Http: http://git.alsa-project.org/?p=tinycompress.git
-
-Github: https://github.com/alsa-project/tinycompress
+	The library can found in github at:
+https://github.com/alsa-project/tinycompress
 
 3. PATCHES
 	Please send any enhancements/fixes to alsa developer mailing list at:
