@@ -255,7 +255,7 @@ int find_adts_header(FILE *file, unsigned int *num_channels, unsigned int *sampl
 	}
 	fseek(file, 0, SEEK_SET);
 
-	if ((buf[0] != 0xff) || (buf[1] & 0xf0 != 0xf0))
+	if ((buf[0] != 0xff) || ((buf[1] & 0xf0) != 0xf0))
 		return 0;
 	/* mpeg id */
 	switch (buf[1]>>3 & 0x1) {
