@@ -88,7 +88,6 @@ enum {
 static int verbose, interactive;
 static bool is_paused = false;
 static long term_c_lflag = -1, stdin_flags = -1;
-static const unsigned int DEFAULT_CODEC_ID = SND_AUDIOCODEC_PCM;
 
 static const struct {
 	const char *name;
@@ -363,8 +362,6 @@ int find_adif_header(FILE *file, unsigned int *num_channels, unsigned int *sampl
 	unsigned char adif_id[4];
 	unsigned char adif_header[20];
 	int bitstream_type;
-	int bitrate;
-	int object_type;
 	int sr_index;
 	int skip_size = 0;
 
@@ -385,23 +382,14 @@ int find_adif_header(FILE *file, unsigned int *num_channels, unsigned int *sampl
 		skip_size = 9;
 
 	bitstream_type = adif_header[0 + skip_size] & 0x10;
-	bitrate =
-		 ((unsigned int) (adif_header[0 + skip_size] & 0x0f) << 19) |
-		 ((unsigned int) adif_header[1 + skip_size] << 11) |
-		 ((unsigned int) adif_header[2 + skip_size] << 3) |
-		 ((unsigned int) adif_header[3 + skip_size] & 0xe0);
 
-	if (bitstream_type == 0) {
-		object_type = ((adif_header[6 + skip_size] & 0x01) << 1) |
-			((adif_header[7 + skip_size] & 0x80) >> 7);
+	if (bitstream_type == 0)
 		sr_index = (adif_header[7 + skip_size] & 0x78) >> 3;
-	}
+
 	/* VBR */
-	else {
-		object_type = (adif_header[4 + skip_size] & 0x18) >> 3;
+	else
 		sr_index = ((adif_header[4 + skip_size] & 0x07) << 1) |
 			((adif_header[5 + skip_size] & 0x80) >> 7);
-	}
 
 	/* sample rate */
 	*sample_rate = get_sample_rate_from_index(sr_index);
