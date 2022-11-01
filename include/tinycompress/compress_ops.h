@@ -42,6 +42,7 @@ struct compress_ops {
 	int (*is_compress_running)(void *compress_data);
 	int (*is_compress_ready)(void *compress_data);
 	const char *(*get_error)(void *compress_data);
+	int (*set_codec_params)(void *compress_data, struct snd_codec *codec);
 };
 
 #endif /* end of __COMPRESS_OPS_H__ */

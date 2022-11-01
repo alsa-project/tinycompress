@@ -324,6 +324,7 @@ static int compress_hw_write(void *data, const void *buf, size_t size)
 		cbuf += written;
 		total += written;
 	}
+
 	return total;
 }
 
@@ -573,6 +574,31 @@ static int compress_hw_wait(void *data, int timeout_ms)
 	return oops(compress, EIO, "poll signalled unhandled event");
 }
 
+static int compress_hw_set_codec_params(void *data, struct snd_codec *codec)
+{
+	struct compress_hw_data *compress = (struct compress_hw_data *)data;
+	struct snd_compr_params params;
+
+	if (!is_compress_hw_ready(compress))
+		return oops(compress, ENODEV, "device not ready\n");
+
+	if (!codec)
+		return oops(compress, EINVAL, "passed bad config\n");
+
+	if (!compress->next_track)
+		return oops(compress, EPERM,
+			    "set CODEC params while next track not signalled is not allowed");
+
+	params.buffer.fragment_size = compress->config->fragment_size;
+	params.buffer.fragments = compress->config->fragments;
+	memcpy(&params.codec, codec, sizeof(params.codec));
+
+	if (ioctl(compress->fd, SNDRV_COMPRESS_SET_PARAMS, &params))
+		return oops(compress, errno, "cannot set param for next track\n");
+
+	return 0;
+}
+
 struct compress_ops compress_hw_ops = {
 	.open_by_name = compress_hw_open_by_name,
 	.close = compress_hw_close,
@@ -595,5 +621,6 @@ struct compress_ops compress_hw_ops = {
 	.is_compress_running = is_compress_hw_running,
 	.is_compress_ready = is_compress_hw_ready,
 	.get_error = compress_hw_get_error,
+	.set_codec_params = compress_hw_set_codec_params,
 };
 
