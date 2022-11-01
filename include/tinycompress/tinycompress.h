@@ -307,6 +307,17 @@ int is_compress_ready(struct compress *compress);
 /* Returns a human readable reason for the last error */
 const char *compress_get_error(struct compress *compress);
 
+/*
+ * compress_set_param: set codec config intended for next track
+ * if DSP has support to switch CODEC config during gapless playback
+ *
+ * return 0 on success, negative on error
+ *
+ * @compress: compress stream for which metadata has to set
+ * @config: stream config for next track
+ */
+int compress_set_codec_params(struct compress *compress, struct snd_codec *codec);
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif

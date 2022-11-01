@@ -310,3 +310,7 @@ int compress_wait(struct compress *compress, int timeout_ms)
 	return compress->ops->wait(compress->data, timeout_ms);
 }
 
+int compress_set_codec_params(struct compress *compress, struct snd_codec *codec)
+{
+	return compress->ops->set_codec_params(compress->data, codec);
+}
