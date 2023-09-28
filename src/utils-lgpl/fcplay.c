@@ -57,13 +57,16 @@ static void usage(void)
 		"-d\tdevice node\n"
 		"-I\tspecify codec ID (default is mp3)\n"
 		"-b\tbuffer size\n"
-		"-f\tfragments\n\n"
+		"-f\tfragments\n"
+		"-g\tgapless play\n\n"
 		"-v\tverbose mode\n"
 		"-h\tPrints this help list\n\n"
 		"Example:\n"
 		"\tfcplay -c 1 -d 2 test.mp3\n"
 		"\tfcplay -f 5 test.mp3\n"
-		"\tfcplay -c 1 -d 2 test1.mp3 test2.mp3\n\n"
+		"\tfcplay -c 1 -d 2 test1.mp3 test2.mp3\n"
+		"\tGapless:\n"
+		"\t\tfcplay -c 1 -d 2 -g 1 test1.mp3 test2.mp3\n\n"
 		"Valid codec IDs:\n");
 
 	for (i = 0; i < CPLAY_NUM_CODEC_IDS; ++i)
@@ -77,7 +80,7 @@ static void usage(void)
 
 void play_samples(char **files, unsigned int card, unsigned int device,
 		unsigned long buffer_size, unsigned int frag,
-		unsigned long codec_id, unsigned int file_count);
+		unsigned long codec_id, unsigned int file_count, unsigned int gapless);
 
 static int print_time(struct compress *compress)
 {
@@ -100,13 +103,13 @@ int main(int argc, char **argv)
 	int c, i;
 	unsigned int card = 0, device = 0, frag = 0;
 	unsigned int codec_id = SND_AUDIOCODEC_MP3;
-	unsigned int file_count = 0;
+	unsigned int file_count = 0, gapless = 0;
 
 	if (argc < 2)
 		usage();
 
 	verbose = 0;
-	while ((c = getopt(argc, argv, "hvb:f:c:d:I:")) != -1) {
+	while ((c = getopt(argc, argv, "hvb:f:c:d:I:g:")) != -1) {
 		switch (c) {
 		case 'h':
 			usage();
@@ -122,6 +125,9 @@ int main(int argc, char **argv)
 			break;
 		case 'd':
 			device = strtol(optarg, NULL, 10);
+			break;
+		case 'g':
+			gapless = strtol(optarg, NULL, 10);
 			break;
 		case 'I':
 			if (optarg[0] == '0') {
@@ -157,7 +163,8 @@ int main(int argc, char **argv)
 	//file_count represents total number of files to play
 	file_count = argc - optind;
 
-	play_samples(file, card, device, buffer_size, frag, codec_id, file_count);
+	play_samples(file, card, device, buffer_size, frag, codec_id,
+			file_count, gapless);
 
 	fprintf(stderr, "Finish Playing.... Close Normally\n");
 	exit(EXIT_SUCCESS);
