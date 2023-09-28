@@ -62,7 +62,8 @@ static void usage(void)
 		"-h\tPrints this help list\n\n"
 		"Example:\n"
 		"\tfcplay -c 1 -d 2 test.mp3\n"
-		"\tfcplay -f 5 test.mp3\n\n"
+		"\tfcplay -f 5 test.mp3\n"
+		"\tfcplay -c 1 -d 2 test1.mp3 test2.mp3\n\n"
 		"Valid codec IDs:\n");
 
 	for (i = 0; i < CPLAY_NUM_CODEC_IDS; ++i)
@@ -94,11 +95,12 @@ static int print_time(struct compress *compress)
 
 int main(int argc, char **argv)
 {
-	char *file;
+	char **file;
 	unsigned long buffer_size = 0;
 	int c, i;
 	unsigned int card = 0, device = 0, frag = 0;
 	unsigned int codec_id = SND_AUDIOCODEC_MP3;
+	unsigned int file_count = 0;
 
 	if (argc < 2)
 		usage();
@@ -150,9 +152,12 @@ int main(int argc, char **argv)
 	if (optind >= argc)
 		usage();
 
-	file = argv[optind];
+	file = &argv[optind];
 
-	play_samples(file, card, device, buffer_size, frag, codec_id);
+	//file_count represents total number of files to play
+	file_count = argc - optind;
+
+	play_samples(file, card, device, buffer_size, frag, codec_id, file_count);
 
 	fprintf(stderr, "Finish Playing.... Close Normally\n");
 	exit(EXIT_SUCCESS);
