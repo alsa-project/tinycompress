@@ -303,16 +303,17 @@ exit:
 
 void play_samples(char **files, unsigned int card, unsigned int device,
 		unsigned long buffer_size, unsigned int frag,
-		unsigned long codec_id, unsigned int file_count)
+		unsigned long codec_id, unsigned int file_count, unsigned int gapless)
 {
 	struct compr_config config;
 	struct snd_codec codec;
 	struct compress *compress;
+	struct compr_gapless_mdata mdata;
 	FILE *file;
 	char *buffer;
 	char *name;
 	int size, num_read, wrote;
-	unsigned int file_idx = 0;
+	unsigned int file_idx = 0, rc = 0;
 
 	if (verbose)
 		printf("%s: entry\n", __func__);
@@ -326,6 +327,7 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 
 	memset(&codec, 0, sizeof(codec));
 	memset(&config, 0, sizeof(config));
+	memset(&mdata, 0, sizeof(mdata));
 
 	parse_file(name, &codec);
 
@@ -346,6 +348,9 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 		fprintf(stderr, "Unable to allocate %d bytes\n", size);
 		goto COMP_EXIT;
 	}
+
+	if (gapless)
+		compress_set_gapless_metadata(compress, &mdata);
 
 	/* we will write frag fragment_size and then start */
 	num_read = fread(buffer, 1, size * config.fragments, file);
@@ -378,6 +383,31 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 			file = fopen(name, "rb");
 			if (!file)
 				goto TRACK_EXIT;
+
+			if (verbose)
+				printf("Playing file %s On Card %u device %u, with buffer of %lu bytes\n",
+					    name, card, device, buffer_size);
+
+			if (gapless) {
+				parse_file(name, &codec);
+
+				rc = compress_next_track(compress);
+				if (rc)
+					fprintf(stderr, "ERR: compress next track set\n");
+
+				rc = compress_set_gapless_metadata(compress, &mdata);
+				if (rc)
+					fprintf(stderr, "ERR: set gapless metadata\n");
+
+				rc = compress_set_codec_params(compress, &codec);
+				if (rc)
+					fprintf(stderr, "ERR: set next track codec params\n");
+
+				/* issue partial drain if it supports */
+				rc = compress_partial_drain(compress);
+				if (rc)
+					fprintf(stderr, "ERR: partial drain\n");
+			}
 		}
 
 		do {
