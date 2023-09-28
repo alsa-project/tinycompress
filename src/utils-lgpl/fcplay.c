@@ -75,9 +75,9 @@ static void usage(void)
 	exit(EXIT_FAILURE);
 }
 
-void play_samples(char *name, unsigned int card, unsigned int device,
+void play_samples(char **files, unsigned int card, unsigned int device,
 		unsigned long buffer_size, unsigned int frag,
-		unsigned long codec_id);
+		unsigned long codec_id, unsigned int file_count);
 
 static int print_time(struct compress *compress)
 {
@@ -294,19 +294,23 @@ exit:
 
 }
 
-void play_samples(char *name, unsigned int card, unsigned int device,
+void play_samples(char **files, unsigned int card, unsigned int device,
 		unsigned long buffer_size, unsigned int frag,
-		unsigned long codec_id)
+		unsigned long codec_id, unsigned int file_count)
 {
 	struct compr_config config;
 	struct snd_codec codec;
 	struct compress *compress;
 	FILE *file;
 	char *buffer;
+	char *name;
 	int size, num_read, wrote;
+	unsigned int file_idx = 0;
 
 	if (verbose)
 		printf("%s: entry\n", __func__);
+
+	name = files[file_idx];
 	file = fopen(name, "rb");
 	if (!file) {
 		fprintf(stderr, "Unable to open file '%s'\n", name);
@@ -362,33 +366,51 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 		printf("%s: You should hear audio NOW!!!\n", __func__);
 
 	do {
-		num_read = fread(buffer, 1, size, file);
-		if (num_read > 0) {
-			wrote = compress_write(compress, buffer, num_read);
-			if (wrote < 0) {
-				fprintf(stderr, "Error playing sample\n");
-				fprintf(stderr, "ERR: %s\n", compress_get_error(compress));
-				goto BUF_EXIT;
-			}
-			if (wrote != num_read) {
-				/* TODO: Buffer pointer needs to be set here */
-				fprintf(stderr, "We wrote %d, DSP accepted %d\n", num_read, wrote);
-			}
-			if (verbose) {
-				print_time(compress);
-				printf("%s: wrote %d\n", __func__, wrote);
-			}
+		if (file_idx != 0) {
+			name = files[file_idx];
+			file = fopen(name, "rb");
+			if (!file)
+				goto TRACK_EXIT;
 		}
-	} while (num_read > 0);
+
+		do {
+			num_read = fread(buffer, 1, size, file);
+			if (num_read > 0) {
+				wrote = compress_write(compress, buffer, num_read);
+				if (wrote < 0) {
+					fprintf(stderr, "Error playing sample\n");
+					fprintf(stderr, "ERR: %s\n", compress_get_error(compress));
+					goto BUF_EXIT;
+				}
+				if (wrote != num_read) {
+					/* TODO: Buffer pointer needs to be set here */
+					fprintf(stderr, "We wrote %d, DSP accepted %d\n", num_read, wrote);
+				}
+				if (verbose) {
+					print_time(compress);
+					printf("%s: wrote %d\n", __func__, wrote);
+				}
+			}
+		} while (num_read > 0);
+
+		file_idx++;
+		if (file_idx == file_count) {
+			/* issue drain if it supports */
+			compress_drain(compress);
+		}
+		fclose(file);
+	} while (file_idx < file_count);
 
 	if (verbose)
 		printf("%s: exit success\n", __func__);
 	/* issue drain if it supports */
-	compress_drain(compress);
 	free(buffer);
-	fclose(file);
 	compress_close(compress);
 	return;
+
+TRACK_EXIT:
+	if (verbose)
+		printf("%s: exit track\n", __func__);
 BUF_EXIT:
 	free(buffer);
 COMP_EXIT:
