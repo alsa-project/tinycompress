@@ -163,16 +163,19 @@ static void *compress_hw_open_by_name(const char *name,
 	compress->max_poll_wait_ms = DEFAULT_MAX_POLL_WAIT_MS;
 
 	compress->flags = flags;
-	if (!((flags & COMPRESS_OUT) || (flags & COMPRESS_IN))) {
+	if (!((flags & COMPRESS_OUT) || (flags & COMPRESS_IN) || (flags & COMPRESS_ACCEL))) {
 		oops(&bad_compress, EINVAL, "can't deduce device direction from given flags");
 		goto config_fail;
 	}
 
 	if (flags & COMPRESS_OUT) {
 		compress->fd = open(fn, O_RDONLY);
-	} else {
+	} else if (flags & COMPRESS_IN) {
 		compress->fd = open(fn, O_WRONLY);
+	} else {
+		compress->fd = open(fn, O_RDWR);
 	}
+
 	if (compress->fd < 0) {
 		oops(&bad_compress, errno, "cannot open device '%s'", fn);
 		goto config_fail;
@@ -598,6 +601,90 @@ static int compress_hw_set_codec_params(void *data, struct snd_codec *codec)
 	return 0;
 }
 
+static int compress_hw_task_create(void *data, struct compr_task *ctask)
+{
+	struct compress_hw_data *compress = (struct compress_hw_data *)data;
+	struct snd_compr_task task;
+
+	if (!is_compress_hw_ready(compress))
+		return oops(compress, ENODEV, "device not ready\n");
+
+	memcpy(&task, ctask, sizeof(task));
+
+	if (ioctl(compress->fd, SNDRV_COMPRESS_TASK_CREATE, &task))
+		return oops(compress, errno, "cannot create task\n");
+
+	memcpy(ctask, &task, sizeof(task));
+
+	return 0;
+}
+
+static int compress_hw_task_start(void *data, struct compr_task *ctask)
+{
+	struct compress_hw_data *compress = (struct compress_hw_data *)data;
+	struct snd_compr_task task;
+
+	if (!is_compress_hw_ready(compress))
+		return oops(compress, ENODEV, "device not ready\n");
+
+	memcpy(&task, ctask, sizeof(task));
+
+	if (ioctl(compress->fd, SNDRV_COMPRESS_TASK_START, &task))
+		return oops(compress, errno, "cannot create task\n");
+
+	return 0;
+}
+
+static int compress_hw_task_stop(void *data, struct compr_task *ctask)
+{
+	struct compress_hw_data *compress = (struct compress_hw_data *)data;
+	struct snd_compr_task task;
+
+	if (!is_compress_hw_ready(compress))
+		return oops(compress, ENODEV, "device not ready\n");
+
+	memcpy(&task, ctask, sizeof(task));
+
+	if (ioctl(compress->fd, SNDRV_COMPRESS_TASK_STOP, &task.seqno))
+		return oops(compress, errno, "cannot create task\n");
+
+	return 0;
+}
+
+static int compress_hw_task_free(void *data, struct compr_task *ctask)
+{
+	struct compress_hw_data *compress = (struct compress_hw_data *)data;
+	struct snd_compr_task task;
+
+	if (!is_compress_hw_ready(compress))
+		return oops(compress, ENODEV, "device not ready\n");
+
+	memcpy(&task, ctask, sizeof(task));
+
+	if (ioctl(compress->fd, SNDRV_COMPRESS_TASK_FREE, &task.seqno))
+		return oops(compress, errno, "cannot create task\n");
+
+	return 0;
+}
+
+static int compress_hw_task_status(void *data, struct compr_task_status *cstatus)
+{
+	struct compress_hw_data *compress = (struct compress_hw_data *)data;
+	struct snd_compr_task_status status;
+
+	if (!is_compress_hw_ready(compress))
+		return oops(compress, ENODEV, "device not ready\n");
+
+	memcpy(&status, cstatus, sizeof(status));
+
+	if (ioctl(compress->fd, SNDRV_COMPRESS_TASK_STATUS, &status))
+		return oops(compress, errno, "cannot create task\n");
+
+	memcpy(cstatus, &status, sizeof(status));
+
+	return 0;
+}
+
 struct compress_ops compress_hw_ops = {
 	.open_by_name = compress_hw_open_by_name,
 	.close = compress_hw_close,
@@ -621,5 +708,10 @@ struct compress_ops compress_hw_ops = {
 	.is_compress_ready = is_compress_hw_ready,
 	.get_error = compress_hw_get_error,
 	.set_codec_params = compress_hw_set_codec_params,
+	.task_create = compress_hw_task_create,
+	.task_start = compress_hw_task_start,
+	.task_stop = compress_hw_task_stop,
+	.task_status = compress_hw_task_status,
+	.task_free = compress_hw_task_free,
 };
 

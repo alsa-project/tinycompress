@@ -253,7 +253,15 @@ union snd_codec_options {
  struct snd_dec_wma wma_d;
  struct snd_dec_alac alac_d;
  struct snd_dec_ape ape_d;
+ struct {
+   __u32 out_sample_rate;
+ } src_d;
 }__attribute__((packed, aligned(4)));
+
+struct snd_codec_desc_src {
+ __u32 out_sample_rate_min;
+ __u32 out_sample_rate_max;
+} __attribute__((packed, aligned(4)));
 
 struct snd_codec_desc {
  __u32 max_ch;
@@ -266,7 +274,12 @@ struct snd_codec_desc {
  __u32 modes;
  __u32 formats;
  __u32 min_buffer;
- __u32 reserved[15];
+ __u32 pcm_formats;
+ union {
+  __u32 u_space[6];
+  struct snd_codec_desc_src src;
+ } __attribute__((packed, aligned(4)));
+ __u32 reserved[8];
 }__attribute__((packed, aligned(4)));
 
 struct snd_codec {
@@ -282,7 +295,8 @@ struct snd_codec {
  __u32 format;
  __u32 align;
  union snd_codec_options options;
- __u32 reserved[3];
+ __u32 pcm_format;
+ __u32 reserved[2];
 }__attribute__((packed, aligned(4)));
 
 #endif

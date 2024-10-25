@@ -43,6 +43,11 @@ struct compress_ops {
 	int (*is_compress_ready)(void *compress_data);
 	const char *(*get_error)(void *compress_data);
 	int (*set_codec_params)(void *compress_data, struct snd_codec *codec);
+	int (*task_create)(void *compress_data, struct compr_task *task);
+	int (*task_start)(void *compress_data, struct compr_task *task);
+	int (*task_stop)(void *compress_data, struct compr_task *task);
+	int (*task_free)(void *compress_data, struct compr_task *task);
+	int (*task_status)(void *compress_data, struct compr_task_status *status);
 };
 
 #endif /* end of __COMPRESS_OPS_H__ */

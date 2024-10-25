@@ -314,3 +314,28 @@ int compress_set_codec_params(struct compress *compress, struct snd_codec *codec
 {
 	return compress->ops->set_codec_params(compress->data, codec);
 }
+
+int compress_task_create(struct compress *compress, struct compr_task *task)
+{
+	return compress->ops->task_create(compress->data, task);
+}
+
+int compress_task_start(struct compress *compress, struct compr_task *task)
+{
+	return compress->ops->task_start(compress->data, task);
+}
+
+int compress_task_stop(struct compress *compress, struct compr_task *task)
+{
+	return compress->ops->task_stop(compress->data, task);
+}
+
+int compress_task_free(struct compress *compress, struct compr_task *task)
+{
+	return compress->ops->task_free(compress->data, task);
+}
+
+int compress_task_status(struct compress *compress, struct compr_task_status *status)
+{
+	return compress->ops->task_status(compress->data, status);
+}

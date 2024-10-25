@@ -82,6 +82,28 @@ struct compr_gapless_mdata {
 	__u32 encoder_padding;
 };
 
+/* Same as struct snd_compr_task */
+struct compr_task {
+	__u64 seqno;
+	__u64 origin_seqno;
+	int input_fd;
+	int output_fd;
+	__u64 input_size;
+	__u32 flags;
+	__u8 reserved[16];
+};
+
+/* Same as struct snd_compr_task_status */
+struct compr_task_status {
+	__u64 seqno;
+	__u64 input_size;
+	__u64 output_size;
+	__u32 output_flags;
+	__u8 state;
+	__u8 reserved[15];
+};
+
+#define COMPRESS_ACCEL      0x40000000
 #define COMPRESS_OUT        0x20000000
 #define COMPRESS_IN         0x10000000
 
@@ -317,6 +339,12 @@ const char *compress_get_error(struct compress *compress);
  * @config: stream config for next track
  */
 int compress_set_codec_params(struct compress *compress, struct snd_codec *codec);
+
+int compress_task_create(struct compress *compress, struct compr_task *task);
+int compress_task_start(struct compress *compress, struct compr_task *task);
+int compress_task_stop(struct compress *compress, struct compr_task *task);
+int compress_task_free(struct compress *compress, struct compr_task *task);
+int compress_task_status(struct compress *compress, struct compr_task_status *status);
 
 #if defined(__cplusplus)
 } // extern "C"
