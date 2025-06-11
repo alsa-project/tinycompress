@@ -349,8 +349,8 @@ static int compress_hw_read(void *data, void *buf, size_t size)
 
 	if ( (avail.avail < frag_size) && (avail.avail < size) ) {
 		/* Less than one fragment available and not at the
-			* end of the read, so poll
-			*/
+		 * end of the read, so poll
+		 */
 		if (compress->nonblocking)
 			return num_read;
 
@@ -359,7 +359,7 @@ static int compress_hw_read(void *data, void *buf, size_t size)
 			return oops(compress, EIO, "poll returned error!");
 		}
 		/* A pause will cause -EBADFD or zero.
-			* This is not an error, just stop reading */
+		 * This is not an error, just stop reading */
 		if ((ret == 0) || (ret < 0 && errno == EBADFD))
 			break;
 		if (ret < 0)
