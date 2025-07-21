@@ -224,25 +224,49 @@ static void compress_hw_close(void *data)
 	free(compress);
 }
 
+static void compress_hw_avail64_from_32(struct snd_compr_avail64 *avail64,
+                                        const struct snd_compr_avail *avail32) {
+  avail64->avail = avail32->avail;
+
+  avail64->tstamp.byte_offset = avail32->tstamp.byte_offset;
+  avail64->tstamp.copied_total = avail32->tstamp.copied_total;
+  avail64->tstamp.pcm_frames = avail32->tstamp.pcm_frames;
+  avail64->tstamp.pcm_io_frames = avail32->tstamp.pcm_io_frames;
+  avail64->tstamp.sampling_rate = avail32->tstamp.sampling_rate;
+}
+
 static int compress_hw_get_hpointer(void *data,
 		unsigned int *avail, struct timespec *tstamp)
 {
 	struct compress_hw_data *compress = (struct compress_hw_data *)data;
-	struct snd_compr_avail kavail;
+	struct snd_compr_avail kavail32;
+	struct snd_compr_avail64 kavail64;
 	__u64 time;
 
 	if (!is_compress_hw_ready(compress))
 		return oops(compress, ENODEV, "device not ready");
 
-	if (ioctl(compress->fd, SNDRV_COMPRESS_AVAIL, &kavail))
-		return oops(compress, errno, "cannot get avail");
-	if (0 == kavail.tstamp.sampling_rate)
+	const int version = get_compress_hw_version(compress);
+	if (version <= 0)
+		return -1;
+
+	if (version < SNDRV_PROTOCOL_VERSION(0, 4, 0)) {
+		/* SNDRV_COMPRESS_AVAIL64 not supported, fallback to SNDRV_COMPRESS_AVAIL */
+		if (ioctl(compress->fd, SNDRV_COMPRESS_AVAIL, &kavail32))
+			return oops(compress, errno, "cannot get avail");
+		compress_hw_avail64_from_32(&kavail64, &kavail32);
+	} else {
+		if (ioctl(compress->fd, SNDRV_COMPRESS_AVAIL64, &kavail64))
+			return oops(compress, errno, "cannot get avail64");
+	}
+
+	if (0 == kavail64.tstamp.sampling_rate)
 		return oops(compress, ENODATA, "sample rate unknown");
-	*avail = (unsigned int)kavail.avail;
-	time = kavail.tstamp.pcm_io_frames / kavail.tstamp.sampling_rate;
+	*avail = (unsigned int)kavail64.avail;
+	time = kavail64.tstamp.pcm_io_frames / kavail64.tstamp.sampling_rate;
 	tstamp->tv_sec = time;
-	time = kavail.tstamp.pcm_io_frames % kavail.tstamp.sampling_rate;
-	tstamp->tv_nsec = time * 1000000000 / kavail.tstamp.sampling_rate;
+	time = kavail64.tstamp.pcm_io_frames % kavail64.tstamp.sampling_rate;
+	tstamp->tv_nsec = time * 1000000000 / kavail64.tstamp.sampling_rate;
 	return 0;
 }
 
