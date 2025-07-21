@@ -151,6 +151,17 @@ int compress_get_tstamp(struct compress *compress,
 		unsigned int *samples, unsigned int *sampling_rate);
 
 /*
+ * compress_get_tstamp64: get the raw hw timestamp in 64 bit
+ * return 0 on success, negative on error
+ *
+ * @compress: compress stream on which query is made
+ * @samples: number of decoded samples played
+ * @sampling_rate: sampling rate of decoded samples
+ */
+int compress_get_tstamp64(struct compress *compress,
+		unsigned long long *samples, unsigned int *sampling_rate);
+
+/*
  * compress_write: write data to the compress stream
  * return bytes written on success, negative on error
  * By default this is a blocking call and will not return
