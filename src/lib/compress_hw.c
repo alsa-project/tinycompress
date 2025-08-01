@@ -36,6 +36,7 @@ struct compress_hw_data {
 	int fd;
 	unsigned int flags;
 	char error[COMPR_ERR_MAX];
+	int ioctl_version;
 	struct compr_config *config;
 	int running;
 	int max_poll_wait_ms;
@@ -88,13 +89,7 @@ static int is_compress_hw_ready(void *data)
 
 static int get_compress_hw_version(struct compress_hw_data *compress)
 {
-	int version = 0;
-
-	if (ioctl(compress->fd, SNDRV_COMPRESS_IOCTL_VERSION, &version)) {
-		oops(compress, errno, "cant read version");
-		return -1;
-	}
-	return version;
+	return compress->ioctl_version;
 }
 
 static bool _is_codec_type_supported(int fd, struct snd_codec *codec)
@@ -176,6 +171,11 @@ static void *compress_hw_open_by_name(const char *name,
 	if (compress->fd < 0) {
 		oops(&bad_compress, errno, "cannot open device '%s'", fn);
 		goto config_fail;
+	}
+
+	if (ioctl(compress->fd, SNDRV_COMPRESS_IOCTL_VERSION, &compress->ioctl_version)) {
+		oops(&bad_compress, errno, "cannot read version");
+		goto codec_fail;
 	}
 
 	if (ioctl(compress->fd, SNDRV_COMPRESS_GET_CAPS, &caps)) {
