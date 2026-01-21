@@ -8,6 +8,8 @@
 #include "sound/compress_offload.h"
 #include "tinycompress.h"
 
+#define COMPRESS_OPS_V2		0xadcc0002	/* version 2 magic */
+
 /*
  * struct compress_ops:
  * ops structure containing ops corresponding to exposed
@@ -16,6 +18,7 @@
  * done in compress_hw.c
  */
 struct compress_ops {
+	unsigned int magic;	/* version of this structure */
 	void *(*open_by_name)(const char *name,
 			unsigned int flags, struct compr_config *config);
 	void (*close)(void *compress_data);

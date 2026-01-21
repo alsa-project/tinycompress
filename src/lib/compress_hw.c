@@ -641,6 +641,7 @@ static int compress_hw_set_codec_params(void *data, struct snd_codec *codec)
 }
 
 struct compress_ops compress_hw_ops = {
+	.magic = COMPRESS_OPS_V2,
 	.open_by_name = compress_hw_open_by_name,
 	.close = compress_hw_close,
 	.get_hpointer = compress_hw_get_hpointer,
