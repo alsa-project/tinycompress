@@ -271,14 +271,10 @@ static int compress_hw_get_hpointer(void *data,
 	return 0;
 }
 
-static int compress_hw_get_tstamp(void *data,
-			unsigned int *samples, unsigned int *sampling_rate)
+static int compress_hw_get_tstamp_32(struct compress_hw_data *compress,
+			unsigned long long *samples, unsigned int *sampling_rate)
 {
-	struct compress_hw_data *compress = (struct compress_hw_data *)data;
 	struct snd_compr_tstamp ktstamp;
-
-	if (!is_compress_hw_ready(compress))
-		return oops(compress, ENODEV, "device not ready");
 
 	if (ioctl(compress->fd, SNDRV_COMPRESS_TSTAMP, &ktstamp))
 		return oops(compress, errno, "cannot get tstamp");
@@ -288,14 +284,10 @@ static int compress_hw_get_tstamp(void *data,
 	return 0;
 }
 
-static int compress_hw_get_tstamp64(void *data,
+static int compress_hw_get_tstamp_64(struct compress_hw_data *compress,
 			unsigned long long *samples, unsigned int *sampling_rate)
 {
-	struct compress_hw_data *compress = (struct compress_hw_data *)data;
 	struct snd_compr_tstamp64 ktstamp;
-
-	if (!is_compress_hw_ready(compress))
-		return oops(compress, ENODEV, "device not ready");
 
 	if (ioctl(compress->fd, SNDRV_COMPRESS_TSTAMP64, &ktstamp))
 		return oops(compress, errno, "cannot get tstamp64");
@@ -303,6 +295,20 @@ static int compress_hw_get_tstamp64(void *data,
 	*samples = ktstamp.pcm_io_frames;
 	*sampling_rate = ktstamp.sampling_rate;
 	return 0;
+}
+
+static int compress_hw_get_tstamp(void *data,
+			unsigned long long *samples, unsigned int *sampling_rate)
+{
+	struct compress_hw_data *compress = (struct compress_hw_data *)data;
+
+	if (!is_compress_hw_ready(compress))
+		return oops(compress, ENODEV, "device not ready");
+
+	if (get_compress_hw_version(compress) >= SNDRV_PROTOCOL_VERSION(0, 4, 0))
+		return compress_hw_get_tstamp_64(compress, samples, sampling_rate);
+	else
+		return compress_hw_get_tstamp_32(compress, samples, sampling_rate);
 }
 
 static int compress_hw_write(void *data, const void *buf, size_t size)
@@ -646,7 +652,6 @@ struct compress_ops compress_hw_ops = {
 	.close = compress_hw_close,
 	.get_hpointer = compress_hw_get_hpointer,
 	.get_tstamp = compress_hw_get_tstamp,
-	.get_tstamp64 = compress_hw_get_tstamp64,
 	.write = compress_hw_write,
 	.read = compress_hw_read,
 	.start = compress_hw_start,

@@ -209,13 +209,19 @@ int compress_get_hpointer(struct compress *compress,
 int compress_get_tstamp(struct compress *compress,
 			unsigned int *samples, unsigned int *sampling_rate)
 {
-	return compress->ops->get_tstamp(compress->data, samples, sampling_rate);
+	unsigned long long _samples;
+	int ret;
+
+	ret = compress->ops->get_tstamp(compress->data, &_samples, sampling_rate);
+	if (ret >= 0)
+		*samples = (unsigned int)_samples;
+	return ret;
 }
 
 int compress_get_tstamp64(struct compress *compress,
 			unsigned long long *samples, unsigned int *sampling_rate)
 {
-	return compress->ops->get_tstamp64(compress->data, samples, sampling_rate);
+	return compress->ops->get_tstamp(compress->data, samples, sampling_rate);
 }
 
 int compress_write(struct compress *compress, const void *buf, unsigned int size)
