@@ -25,8 +25,6 @@ struct compress_ops {
 	int (*get_hpointer)(void *compress_data,
 			unsigned int *avail, struct timespec *tstamp);
 	int (*get_tstamp)(void *compress_data,
-			unsigned int *samples, unsigned int *sampling_rate);
-	int (*get_tstamp64)(void *compress_data,
 			unsigned long long *samples, unsigned int *sampling_rate);
 	int (*write)(void *compress_data, const void *buf, size_t size);
 	int (*read)(void *compress_data, void *buf, size_t size);
