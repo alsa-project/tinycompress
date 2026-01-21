@@ -184,7 +184,7 @@ int compress_write(struct compress *compress, const void *buf, unsigned int size
  * compress_read: read data from the compress stream
  * return bytes read on success, negative on error
  * By default this is a blocking call and will block until
- * size bytes have been written or there was a read error.
+ * some bytes have been read or there was a read error.
  * If non-blocking mode was enabled using compress_nonblock()
  * the behaviour will change to read only as many bytes as
  * are currently available (if no bytes are available it
