@@ -237,7 +237,7 @@ static void compress_hw_avail64_from_32(struct snd_compr_avail64 *avail64,
 }
 
 static int compress_hw_get_hpointer(void *data,
-		unsigned int *avail, struct timespec *tstamp)
+		unsigned long long *avail, struct timespec *tstamp)
 {
 	struct compress_hw_data *compress = (struct compress_hw_data *)data;
 	struct snd_compr_avail kavail32;
@@ -263,7 +263,7 @@ static int compress_hw_get_hpointer(void *data,
 
 	if (0 == kavail64.tstamp.sampling_rate)
 		return oops(compress, ENODATA, "sample rate unknown");
-	*avail = (unsigned int)kavail64.avail;
+	*avail = kavail64.avail;
 	time = kavail64.tstamp.pcm_io_frames / kavail64.tstamp.sampling_rate;
 	tstamp->tv_sec = time;
 	time = kavail64.tstamp.pcm_io_frames % kavail64.tstamp.sampling_rate;
