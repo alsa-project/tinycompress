@@ -58,6 +58,7 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 #include <sys/errno.h>
 #include <sys/time.h>
 #include "tinycompress/tinycompress.h"
@@ -202,6 +203,21 @@ void compress_close(struct compress *compress)
 
 int compress_get_hpointer(struct compress *compress,
 		unsigned int *avail, struct timespec *tstamp)
+{
+	unsigned long long _avail;
+	int ret;
+
+	ret = compress->ops->get_hpointer(compress->data, &_avail, tstamp);
+	if (ret >= 0) {
+		if (_avail > UINT_MAX)
+			_avail = UINT_MAX;
+		*avail = (unsigned int)_avail;
+	}
+	return ret;
+}
+
+int compress_get_hpointer64(struct compress *compress,
+		unsigned long long *avail, struct timespec *tstamp)
 {
 	return compress->ops->get_hpointer(compress->data, avail, tstamp);
 }

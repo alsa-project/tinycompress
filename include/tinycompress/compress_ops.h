@@ -23,7 +23,7 @@ struct compress_ops {
 			unsigned int flags, struct compr_config *config);
 	void (*close)(void *compress_data);
 	int (*get_hpointer)(void *compress_data,
-			unsigned int *avail, struct timespec *tstamp);
+			unsigned long long *avail, struct timespec *tstamp);
 	int (*get_tstamp)(void *compress_data,
 			unsigned long long *samples, unsigned int *sampling_rate);
 	int (*write)(void *compress_data, const void *buf, size_t size);
