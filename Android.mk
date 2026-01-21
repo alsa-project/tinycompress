@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: (LGPL-2.1-only OR BSD-3-Clause)
+
 LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)

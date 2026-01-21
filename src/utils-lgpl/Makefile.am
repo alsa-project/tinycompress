@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LGPL-2.1-only
+
 bin_PROGRAMS = fcplay
 
 fcplay_SOURCES = fcplay.c
