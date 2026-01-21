@@ -225,14 +225,15 @@ static void compress_hw_close(void *data)
 }
 
 static void compress_hw_avail64_from_32(struct snd_compr_avail64 *avail64,
-                                        const struct snd_compr_avail *avail32) {
-  avail64->avail = avail32->avail;
+					const struct snd_compr_avail *avail32)
+{
+	avail64->avail = avail32->avail;
 
-  avail64->tstamp.byte_offset = avail32->tstamp.byte_offset;
-  avail64->tstamp.copied_total = avail32->tstamp.copied_total;
-  avail64->tstamp.pcm_frames = avail32->tstamp.pcm_frames;
-  avail64->tstamp.pcm_io_frames = avail32->tstamp.pcm_io_frames;
-  avail64->tstamp.sampling_rate = avail32->tstamp.sampling_rate;
+	avail64->tstamp.byte_offset = avail32->tstamp.byte_offset;
+	avail64->tstamp.copied_total = avail32->tstamp.copied_total;
+	avail64->tstamp.pcm_frames = avail32->tstamp.pcm_frames;
+	avail64->tstamp.pcm_io_frames = avail32->tstamp.pcm_io_frames;
+	avail64->tstamp.sampling_rate = avail32->tstamp.sampling_rate;
 }
 
 static int compress_hw_get_hpointer(void *data,
