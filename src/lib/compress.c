@@ -58,6 +58,7 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/errno.h>
 #include <sys/time.h>
 #include "tinycompress/tinycompress.h"
 #include "tinycompress/compress_ops.h"
@@ -136,13 +137,19 @@ static int populate_compress_plugin_ops(struct compress *compress, const char *n
 		return ret;
 	}
 
-	compress->ops = dlsym(dl_hdl, "compress_plugin_ops");
+	compress->ops = dlsym(dl_hdl, "compress_plugin_mops");
 	err = dlerror();
 	if (err) {
 		fprintf(stderr, "%s: dlsym to ops failed, err = '%s'\n",
 				__func__, err);
 		dlclose(dl_hdl);
 		return ret;
+	}
+	if (compress->ops->magic != COMPRESS_OPS_V2) {
+		fprintf(stderr, "%s: dlsym to ops failed, bad magic (%08x)\n",
+				__func__, compress->ops->magic);
+		dlclose(dl_hdl);
+		return -ENXIO;
 	}
 	compress->dl_hdl = dl_hdl;
 	return 0;
