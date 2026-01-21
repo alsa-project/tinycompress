@@ -225,18 +225,19 @@ static void compress_hw_close(void *data)
 }
 
 static void compress_hw_avail64_from_32(struct snd_compr_avail64 *avail64,
-                                        const struct snd_compr_avail *avail32) {
-  avail64->avail = avail32->avail;
+					const struct snd_compr_avail *avail32)
+{
+	avail64->avail = avail32->avail;
 
-  avail64->tstamp.byte_offset = avail32->tstamp.byte_offset;
-  avail64->tstamp.copied_total = avail32->tstamp.copied_total;
-  avail64->tstamp.pcm_frames = avail32->tstamp.pcm_frames;
-  avail64->tstamp.pcm_io_frames = avail32->tstamp.pcm_io_frames;
-  avail64->tstamp.sampling_rate = avail32->tstamp.sampling_rate;
+	avail64->tstamp.byte_offset = avail32->tstamp.byte_offset;
+	avail64->tstamp.copied_total = avail32->tstamp.copied_total;
+	avail64->tstamp.pcm_frames = avail32->tstamp.pcm_frames;
+	avail64->tstamp.pcm_io_frames = avail32->tstamp.pcm_io_frames;
+	avail64->tstamp.sampling_rate = avail32->tstamp.sampling_rate;
 }
 
 static int compress_hw_get_hpointer(void *data,
-		unsigned int *avail, struct timespec *tstamp)
+		unsigned long long *avail, struct timespec *tstamp)
 {
 	struct compress_hw_data *compress = (struct compress_hw_data *)data;
 	struct snd_compr_avail kavail32;
@@ -262,7 +263,7 @@ static int compress_hw_get_hpointer(void *data,
 
 	if (0 == kavail64.tstamp.sampling_rate)
 		return oops(compress, ENODATA, "sample rate unknown");
-	*avail = (unsigned int)kavail64.avail;
+	*avail = kavail64.avail;
 	time = kavail64.tstamp.pcm_io_frames / kavail64.tstamp.sampling_rate;
 	tstamp->tv_sec = time;
 	time = kavail64.tstamp.pcm_io_frames % kavail64.tstamp.sampling_rate;
@@ -270,14 +271,10 @@ static int compress_hw_get_hpointer(void *data,
 	return 0;
 }
 
-static int compress_hw_get_tstamp(void *data,
-			unsigned int *samples, unsigned int *sampling_rate)
+static int compress_hw_get_tstamp_32(struct compress_hw_data *compress,
+			unsigned long long *samples, unsigned int *sampling_rate)
 {
-	struct compress_hw_data *compress = (struct compress_hw_data *)data;
 	struct snd_compr_tstamp ktstamp;
-
-	if (!is_compress_hw_ready(compress))
-		return oops(compress, ENODEV, "device not ready");
 
 	if (ioctl(compress->fd, SNDRV_COMPRESS_TSTAMP, &ktstamp))
 		return oops(compress, errno, "cannot get tstamp");
@@ -287,14 +284,10 @@ static int compress_hw_get_tstamp(void *data,
 	return 0;
 }
 
-static int compress_hw_get_tstamp64(void *data,
+static int compress_hw_get_tstamp_64(struct compress_hw_data *compress,
 			unsigned long long *samples, unsigned int *sampling_rate)
 {
-	struct compress_hw_data *compress = (struct compress_hw_data *)data;
 	struct snd_compr_tstamp64 ktstamp;
-
-	if (!is_compress_hw_ready(compress))
-		return oops(compress, ENODEV, "device not ready");
 
 	if (ioctl(compress->fd, SNDRV_COMPRESS_TSTAMP64, &ktstamp))
 		return oops(compress, errno, "cannot get tstamp64");
@@ -302,6 +295,20 @@ static int compress_hw_get_tstamp64(void *data,
 	*samples = ktstamp.pcm_io_frames;
 	*sampling_rate = ktstamp.sampling_rate;
 	return 0;
+}
+
+static int compress_hw_get_tstamp(void *data,
+			unsigned long long *samples, unsigned int *sampling_rate)
+{
+	struct compress_hw_data *compress = (struct compress_hw_data *)data;
+
+	if (!is_compress_hw_ready(compress))
+		return oops(compress, ENODEV, "device not ready");
+
+	if (get_compress_hw_version(compress) >= SNDRV_PROTOCOL_VERSION(0, 4, 0))
+		return compress_hw_get_tstamp_64(compress, samples, sampling_rate);
+	else
+		return compress_hw_get_tstamp_32(compress, samples, sampling_rate);
 }
 
 static int compress_hw_write(void *data, const void *buf, size_t size)
@@ -640,11 +647,11 @@ static int compress_hw_set_codec_params(void *data, struct snd_codec *codec)
 }
 
 struct compress_ops compress_hw_ops = {
+	.magic = COMPRESS_OPS_V2,
 	.open_by_name = compress_hw_open_by_name,
 	.close = compress_hw_close,
 	.get_hpointer = compress_hw_get_hpointer,
 	.get_tstamp = compress_hw_get_tstamp,
-	.get_tstamp64 = compress_hw_get_tstamp64,
 	.write = compress_hw_write,
 	.read = compress_hw_read,
 	.start = compress_hw_start,

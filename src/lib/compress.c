@@ -58,6 +58,8 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
+#include <sys/errno.h>
 #include <sys/time.h>
 #include "tinycompress/tinycompress.h"
 #include "tinycompress/compress_ops.h"
@@ -136,13 +138,19 @@ static int populate_compress_plugin_ops(struct compress *compress, const char *n
 		return ret;
 	}
 
-	compress->ops = dlsym(dl_hdl, "compress_plugin_ops");
+	compress->ops = dlsym(dl_hdl, "compress_plugin_mops");
 	err = dlerror();
 	if (err) {
 		fprintf(stderr, "%s: dlsym to ops failed, err = '%s'\n",
 				__func__, err);
 		dlclose(dl_hdl);
 		return ret;
+	}
+	if (compress->ops->magic != COMPRESS_OPS_V2) {
+		fprintf(stderr, "%s: dlsym to ops failed, bad magic (%08x)\n",
+				__func__, compress->ops->magic);
+		dlclose(dl_hdl);
+		return -ENXIO;
 	}
 	compress->dl_hdl = dl_hdl;
 	return 0;
@@ -196,19 +204,40 @@ void compress_close(struct compress *compress)
 int compress_get_hpointer(struct compress *compress,
 		unsigned int *avail, struct timespec *tstamp)
 {
+	unsigned long long _avail;
+	int ret;
+
+	ret = compress->ops->get_hpointer(compress->data, &_avail, tstamp);
+	if (ret >= 0) {
+		if (_avail > UINT_MAX)
+			_avail = UINT_MAX;
+		*avail = (unsigned int)_avail;
+	}
+	return ret;
+}
+
+int compress_get_hpointer64(struct compress *compress,
+		unsigned long long *avail, struct timespec *tstamp)
+{
 	return compress->ops->get_hpointer(compress->data, avail, tstamp);
 }
 
 int compress_get_tstamp(struct compress *compress,
 			unsigned int *samples, unsigned int *sampling_rate)
 {
-	return compress->ops->get_tstamp(compress->data, samples, sampling_rate);
+	unsigned long long _samples;
+	int ret;
+
+	ret = compress->ops->get_tstamp(compress->data, &_samples, sampling_rate);
+	if (ret >= 0)
+		*samples = (unsigned int)_samples;
+	return ret;
 }
 
 int compress_get_tstamp64(struct compress *compress,
 			unsigned long long *samples, unsigned int *sampling_rate)
 {
-	return compress->ops->get_tstamp64(compress->data, samples, sampling_rate);
+	return compress->ops->get_tstamp(compress->data, samples, sampling_rate);
 }
 
 int compress_write(struct compress *compress, const void *buf, unsigned int size)
