@@ -199,12 +199,14 @@ static int get_codec_id(int codec_id)
 	}
 }
 
-static int parse_file(char *file, struct snd_codec *codec)
+static int parse_file(const char *file, struct snd_codec *codec)
 {
 	AVFormatContext *ctx = NULL;
 	AVStream *stream;
 	char errbuf[50];
 	int err = 0, i, filled = 0;
+
+	memset(codec, 0, sizeof(*codec));
 
 	err = avformat_open_input(&ctx, file, NULL, NULL);
 	if (err < 0) {
@@ -301,58 +303,41 @@ exit:
 
 }
 
-void play_samples(char **files, unsigned int card, unsigned int device,
-		unsigned long buffer_size, unsigned int frag,
-		unsigned long codec_id, unsigned int file_count, unsigned int gapless)
+static struct compress *
+compress_open_and_prepare(unsigned int card, unsigned int device,
+			  struct snd_codec *codec, unsigned long buffer_size,
+			  const char *name, FILE *file, char **buffer_out,
+			  int *size_out)
 {
 	struct compr_config config;
-	struct snd_codec codec;
 	struct compress *compress;
-	struct compr_gapless_mdata mdata;
-	FILE *file;
-	char *buffer;
-	char *name;
 	int size, num_read, wrote;
-	unsigned int file_idx = 0, rc = 0;
+	char *buffer;
 
-	if (verbose)
-		printf("%s: entry\n", __func__);
-
-	name = files[file_idx];
-	file = fopen(name, "rb");
-	if (!file) {
-		fprintf(stderr, "Unable to open file '%s'\n", name);
-		exit(EXIT_FAILURE);
-	}
-
-	memset(&codec, 0, sizeof(codec));
 	memset(&config, 0, sizeof(config));
-	memset(&mdata, 0, sizeof(mdata));
 
-	parse_file(name, &codec);
-
-	config.codec = &codec;
+	config.codec = codec;
 
 	compress = compress_open(card, device, COMPRESS_IN, &config);
 	if (!compress || !is_compress_ready(compress)) {
 		fprintf(stderr, "Unable to open Compress device %d:%d\n",
 				card, device);
 		fprintf(stderr, "ERR: %s\n", compress_get_error(compress));
-		goto FILE_EXIT;
-	};
+		return NULL;
+	}
 	if (verbose)
 		printf("%s: Opened compress device\n", __func__);
+
 	size = config.fragment_size;
 	buffer = malloc(size * config.fragments);
 	if (!buffer) {
-		fprintf(stderr, "Unable to allocate %d bytes\n", size);
-		goto COMP_EXIT;
+		fprintf(stderr, "Unable to allocate %d bytes\n",
+			size * config.fragments);
+		compress_close(compress);
+		return NULL;
 	}
 
-	if (gapless)
-		compress_set_gapless_metadata(compress, &mdata);
-
-	/* we will write frag fragment_size and then start */
+	/* write full buffer data initially */
 	num_read = fread(buffer, 1, size * config.fragments, file);
 	if (num_read > 0) {
 		if (verbose)
@@ -361,13 +346,51 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 		if (wrote < 0) {
 			fprintf(stderr, "Error %d playing sample\n", wrote);
 			fprintf(stderr, "ERR: %s\n", compress_get_error(compress));
-			goto BUF_EXIT;
+			free(buffer);
+			compress_close(compress);
+			return NULL;
 		}
 		if (wrote != num_read) {
 			/* TODO: Buufer pointer needs to be set here */
 			fprintf(stderr, "We wrote %d, DSP accepted %d\n", num_read, wrote);
 		}
 	}
+
+	*buffer_out = buffer;
+	*size_out = size;
+	return compress;
+}
+
+void play_samples(char **files, unsigned int card, unsigned int device,
+		unsigned long buffer_size, unsigned int frag,
+		unsigned long codec_id, unsigned int file_count, unsigned int gapless)
+{
+	struct compr_gapless_mdata mdata;
+	struct compress *compress;
+	int size, num_read, wrote;
+	unsigned int file_idx = 0;
+	struct snd_codec codec;
+	char *buffer, *name;
+	FILE *file;
+
+	name = files[file_idx];
+	file = fopen(name, "rb");
+	if (!file) {
+		fprintf(stderr, "Unable to open file '%s'\n", name);
+		exit(EXIT_FAILURE);
+	}
+
+	parse_file(name, &codec);
+	compress = compress_open_and_prepare(card, device, &codec, buffer_size,
+					     name, file, &buffer, &size);
+	if (!compress)
+		goto FILE_EXIT;
+
+	if (gapless) {
+		memset(&mdata, 0, sizeof(mdata));
+		compress_set_gapless_metadata(compress, &mdata);
+	}
+
 	printf("Playing file %s On Card %u device %u, with buffer of %lu bytes\n",
 			name, card, device, buffer_size);
 	printf("Format %u Channels %u, %u Hz, Bit Rate %d\n",
@@ -389,6 +412,8 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 					    name, card, device, buffer_size);
 
 			if (gapless) {
+				int rc;
+
 				parse_file(name, &codec);
 
 				rc = compress_set_gapless_metadata(compress, &mdata);
@@ -450,7 +475,6 @@ TRACK_EXIT:
 		printf("%s: exit track\n", __func__);
 BUF_EXIT:
 	free(buffer);
-COMP_EXIT:
 	compress_close(compress);
 FILE_EXIT:
 	fclose(file);
