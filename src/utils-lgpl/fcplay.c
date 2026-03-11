@@ -24,6 +24,11 @@
 
 static int verbose;
 
+enum continuous_playback_mode {
+	PLAYBACK_MODE_NOP     = 0, /* sequential: files are streamed continuously */
+	PLAYBACK_MODE_GAPLESS = 1, /* gapless: uses kernel gapless API */
+};
+
 static const struct {
 	const char *name;
 	unsigned int id;
@@ -52,21 +57,23 @@ static void usage(void)
 {
 	int i;
 
-	fprintf(stderr, "usage: cplay [OPTIONS] filename\n"
+	fprintf(stderr, "usage: fcplay [OPTIONS] file1 [file2 ...]\n"
 		"-c\tcard number\n"
 		"-d\tdevice node\n"
 		"-I\tspecify codec ID (default is mp3)\n"
 		"-b\tbuffer size\n"
 		"-f\tfragments\n"
-		"-g\tgapless play\n\n"
+		"-p\tcontinuous playback mode:\n"
+		"\t  0 = NOP (default): files streamed continuously\n"
+		"\t  1 = gapless: kernel gapless API, no audible gap\n"
+		"-g\t(deprecated) equivalent to -p 0/1\n"
 		"-v\tverbose mode\n"
 		"-h\tPrints this help list\n\n"
 		"Example:\n"
 		"\tfcplay -c 1 -d 2 test.mp3\n"
-		"\tfcplay -f 5 test.mp3\n"
 		"\tfcplay -c 1 -d 2 test1.mp3 test2.mp3\n"
 		"\tGapless:\n"
-		"\t\tfcplay -c 1 -d 2 -g 1 test1.mp3 test2.mp3\n\n"
+		"\t\tfcplay -c 1 -d 2 -p 1 test1.mp3 test2.mp3\n\n"
 		"Valid codec IDs:\n");
 
 	for (i = 0; i < CPLAY_NUM_CODEC_IDS; ++i)
@@ -80,7 +87,8 @@ static void usage(void)
 
 void play_samples(char **files, unsigned int card, unsigned int device,
 		unsigned long buffer_size, unsigned int frag,
-		unsigned long codec_id, unsigned int file_count, unsigned int gapless);
+		unsigned long codec_id, unsigned int file_count,
+		enum continuous_playback_mode pb_mode);
 
 static int print_time(struct compress *compress)
 {
@@ -103,13 +111,14 @@ int main(int argc, char **argv)
 	int c, i;
 	unsigned int card = 0, device = 0, frag = 0;
 	unsigned int codec_id = SND_AUDIOCODEC_MP3;
-	unsigned int file_count = 0, gapless = 0;
+	unsigned int file_count = 0;
+	enum continuous_playback_mode pb_mode = PLAYBACK_MODE_NOP;
 
 	if (argc < 2)
 		usage();
 
 	verbose = 0;
-	while ((c = getopt(argc, argv, "hvb:f:c:d:I:g:")) != -1) {
+	while ((c = getopt(argc, argv, "hvb:f:c:d:I:g:p:")) != -1) {
 		switch (c) {
 		case 'h':
 			usage();
@@ -127,7 +136,10 @@ int main(int argc, char **argv)
 			device = strtol(optarg, NULL, 10);
 			break;
 		case 'g':
-			gapless = strtol(optarg, NULL, 10);
+			fprintf(stderr, "Warning: -g is deprecated, use -p instead\n");
+			/* fall through */
+		case 'p':
+			pb_mode = strtol(optarg, NULL, 10);
 			break;
 		case 'I':
 			if (optarg[0] == '0') {
@@ -164,7 +176,7 @@ int main(int argc, char **argv)
 	file_count = argc - optind;
 
 	play_samples(file, card, device, buffer_size, frag, codec_id,
-			file_count, gapless);
+			file_count, pb_mode);
 
 	fprintf(stderr, "Finish Playing.... Close Normally\n");
 	exit(EXIT_SUCCESS);
@@ -394,7 +406,8 @@ compress_open_and_prepare(unsigned int card, unsigned int device,
 
 void play_samples(char **files, unsigned int card, unsigned int device,
 		unsigned long buffer_size, unsigned int frag,
-		unsigned long codec_id, unsigned int file_count, unsigned int gapless)
+		unsigned long codec_id, unsigned int file_count,
+		enum continuous_playback_mode pb_mode)
 {
 	struct compr_gapless_mdata mdata;
 	struct compress *compress;
@@ -417,7 +430,7 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 	if (!compress)
 		goto FILE_EXIT;
 
-	if (gapless) {
+	if (pb_mode == PLAYBACK_MODE_GAPLESS) {
 		memset(&mdata, 0, sizeof(mdata));
 		compress_set_gapless_metadata(compress, &mdata);
 	}
@@ -442,7 +455,7 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 				printf("Playing file %s On Card %u device %u, with buffer of %lu bytes\n",
 					    name, card, device, buffer_size);
 
-			if (gapless) {
+			if (pb_mode == PLAYBACK_MODE_GAPLESS) {
 				int rc;
 
 				parse_file(name, &codec);
