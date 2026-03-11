@@ -533,21 +533,14 @@ int main(int argc, char **argv)
 void get_codec_pcm(FILE *file, struct compr_config *config,
 		   struct snd_codec *codec)
 {
-	size_t read;
-	struct wave_header header;
-	unsigned int channels, rate, format;
+	unsigned int channels, rate, format, channel_mask;
 
-	read = fread(&header, 1, sizeof(header), file);
-	if (read != sizeof(header)) {
-		fprintf(stderr, "Unable to read header \n");
+	if (parse_wave_file(file, &channels, &rate, &format, &channel_mask) == -1) {
 		fclose(file);
 		exit(EXIT_FAILURE);
 	}
 
-	if (parse_wave_header(&header, &channels, &rate, &format) == -1) {
-		fclose(file);
-		exit(EXIT_FAILURE);
-	}
+	/* File pointer is now at start of audio data */
 
 	codec->id = SND_AUDIOCODEC_PCM;
 	codec->ch_in = channels;
@@ -562,7 +555,7 @@ void get_codec_pcm(FILE *file, struct compr_config *config,
 	codec->rate_control = 0;
 	codec->profile = SND_AUDIOCODEC_PCM;
 	codec->level = 0;
-	codec->ch_mode = 0;
+	codec->ch_mode = channel_mask;
 	codec->format = format;
 }
 #endif
