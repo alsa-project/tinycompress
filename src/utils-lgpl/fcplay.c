@@ -422,13 +422,13 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 			if (gapless) {
 				parse_file(name, &codec);
 
-				rc = compress_next_track(compress);
-				if (rc)
-					fprintf(stderr, "ERR: compress next track set\n");
-
 				rc = compress_set_gapless_metadata(compress, &mdata);
 				if (rc)
 					fprintf(stderr, "ERR: set gapless metadata\n");
+
+				rc = compress_next_track(compress);
+				if (rc)
+					fprintf(stderr, "ERR: compress next track set\n");
 
 				rc = compress_set_codec_params(compress, &codec);
 				if (rc)
