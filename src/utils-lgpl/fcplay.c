@@ -27,6 +27,7 @@ static int verbose;
 enum continuous_playback_mode {
 	PLAYBACK_MODE_NOP     = 0, /* sequential: files are streamed continuously */
 	PLAYBACK_MODE_GAPLESS = 1, /* gapless: uses kernel gapless API */
+	PLAYBACK_MODE_RESTART = 2, /* restart: compress device is drained, closed and reopened between tracks */
 };
 
 static const struct {
@@ -66,6 +67,7 @@ static void usage(void)
 		"-p\tcontinuous playback mode:\n"
 		"\t  0 = NOP (default): files streamed continuously\n"
 		"\t  1 = gapless: kernel gapless API, no audible gap\n"
+		"\t  2 = restart: compress device drained and reopened between tracks\n"
 		"-g\t(deprecated) equivalent to -p 0/1\n"
 		"-v\tverbose mode\n"
 		"-h\tPrints this help list\n\n"
@@ -445,6 +447,27 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 				rc = compress_partial_drain(compress);
 				if (rc)
 					fprintf(stderr, "ERR: partial drain\n");
+			} else if (pb_mode == PLAYBACK_MODE_RESTART) {
+				/* restart: drain, close, and reopen for the new file */
+				compress_drain(compress);
+				compress_close(compress);
+				free(buffer);
+
+				parse_file(name, &codec);
+				compress = compress_open_and_prepare(card, device, &codec,
+								     buffer_size, name,
+								     file, &buffer, &size);
+				if (!compress)
+					goto FILE_EXIT;
+
+				printf("Playing file %s On Card %u device %u, with buffer of %lu bytes\n",
+					name, card, device, buffer_size);
+				printf("Format %u Channels %u, %u Hz, Bit Rate %d\n",
+					codec.id, codec.ch_in, codec.sample_rate, codec.bit_rate);
+
+				compress_start(compress);
+				if (verbose)
+					printf("%s: You should hear audio NOW!!!\n", __func__);
 			}
 		}
 
