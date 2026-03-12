@@ -199,6 +199,34 @@ static int get_codec_id(int codec_id)
 	}
 }
 
+static unsigned int get_aac_format(AVFormatContext *ctx)
+{
+	unsigned char buf[4];
+	int n;
+
+	avio_seek(ctx->pb, 0, SEEK_SET);
+	n = avio_read(ctx->pb, buf, sizeof(buf));
+	avio_seek(ctx->pb, 0, SEEK_SET);
+
+	if (n < 2)
+		return 0;
+
+	/* ADIF magic: "ADIF" */
+	if (n == 4 && buf[0] == 0x41 && buf[1] == 0x44 && buf[2] == 0x49 && buf[3] == 0x46)
+		return SND_AUDIOSTREAMFORMAT_ADIF;
+
+	/* ADTS sync word: 0xFFF... */
+	if (buf[0] == 0xff && (buf[1] & 0xf0) == 0xf0) {
+		/* MPEG ID bit (bit 3 of buf[1]): 0 = MPEG-4, 1 = MPEG-2 */
+		if ((buf[1] >> 3) & 0x1)
+			return SND_AUDIOSTREAMFORMAT_MP2ADTS;
+		else
+			return SND_AUDIOSTREAMFORMAT_MP4ADTS;
+	}
+
+	return 0;
+}
+
 static int parse_file(char *file, struct snd_codec *codec)
 {
 	AVFormatContext *ctx = NULL;
@@ -245,7 +273,10 @@ static int parse_file(char *file, struct snd_codec *codec)
 				codec->sample_rate = stream->codecpar->sample_rate;
 				codec->bit_rate = ctx->bit_rate;
 				codec->profile = stream->codecpar->profile;
-				codec->format = 0; /* need codec format type */
+				if (codec->id == SND_AUDIOCODEC_AAC)
+					codec->format = get_aac_format(ctx);
+				else
+					codec->format = 0;
 				codec->align = stream->codecpar->block_align;
 				codec->level = 0;
 				codec->rate_control = 0;
