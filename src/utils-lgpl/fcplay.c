@@ -351,8 +351,8 @@ exit:
 static struct compress *
 compress_open_and_prepare(unsigned int card, unsigned int device,
 			  struct snd_codec *codec, unsigned long buffer_size,
-			  const char *name, FILE *file, char **buffer_out,
-			  int *size_out)
+			  unsigned int frag, const char *name, FILE *file,
+			  char **buffer_out, int *size_out)
 {
 	struct compr_config config;
 	struct compress *compress;
@@ -361,6 +361,14 @@ compress_open_and_prepare(unsigned int card, unsigned int device,
 
 	memset(&config, 0, sizeof(config));
 
+	if ((buffer_size != 0) && (frag != 0)) {
+		config.fragment_size = buffer_size / frag;
+		config.fragments = frag;
+	} else {
+		/* use driver defaults */
+		config.fragment_size = 0;
+		config.fragments = 0;
+	}
 	config.codec = codec;
 
 	compress = compress_open(card, device, COMPRESS_IN, &config);
@@ -428,7 +436,7 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 
 	parse_file(name, &codec);
 	compress = compress_open_and_prepare(card, device, &codec, buffer_size,
-					     name, file, &buffer, &size);
+					     frag, name, file, &buffer, &size);
 	if (!compress)
 		goto FILE_EXIT;
 
@@ -486,7 +494,7 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 
 				parse_file(name, &codec);
 				compress = compress_open_and_prepare(card, device, &codec,
-								     buffer_size, name,
+								     buffer_size, frag, name,
 								     file, &buffer, &size);
 				if (!compress)
 					goto FILE_EXIT;
