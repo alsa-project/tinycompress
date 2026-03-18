@@ -844,8 +844,8 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 			fprintf(stderr, "We wrote %d, DSP accepted %d\n", num_read, wrote);
 		}
 	}
-	printf("Playing file %s On Card %u device %u, with buffer of %d bytes\n",
-			name, card, device, size);
+	printf("Playing file %s On Card %u device %u, with buffer of %d bytes, %u fragments\n",
+			name, card, device, size, config.fragments);
 	printf("Format %u Channels %u, %u Hz, Bit Rate %d\n",
 			codec.id, codec.ch_in, codec.sample_rate, codec.bit_rate);
 
