@@ -352,11 +352,12 @@ static struct compress *
 compress_open_and_prepare(unsigned int card, unsigned int device,
 			  struct snd_codec *codec, unsigned long buffer_size,
 			  unsigned int frag, const char *name, FILE *file,
-			  char **buffer_out, int *size_out)
+			  char **buffer_out, unsigned long *total_size_out,
+			  unsigned int *num_fragments_out)
 {
 	struct compr_config config;
 	struct compress *compress;
-	int size, num_read, wrote;
+	int fragment_size, num_read, wrote;
 	char *buffer;
 
 	memset(&config, 0, sizeof(config));
@@ -381,17 +382,17 @@ compress_open_and_prepare(unsigned int card, unsigned int device,
 	if (verbose)
 		printf("%s: Opened compress device\n", __func__);
 
-	size = config.fragment_size;
-	buffer = malloc(size * config.fragments);
+	fragment_size = config.fragment_size;
+	buffer = malloc(fragment_size * config.fragments);
 	if (!buffer) {
 		fprintf(stderr, "Unable to allocate %d bytes\n",
-			size * config.fragments);
+			fragment_size * config.fragments);
 		compress_close(compress);
 		return NULL;
 	}
 
 	/* write full buffer data initially */
-	num_read = fread(buffer, 1, size * config.fragments, file);
+	num_read = fread(buffer, 1, fragment_size * config.fragments, file);
 	if (num_read > 0) {
 		if (verbose)
 			printf("%s: Doing first buffer write of %d\n", __func__, num_read);
@@ -410,7 +411,8 @@ compress_open_and_prepare(unsigned int card, unsigned int device,
 	}
 
 	*buffer_out = buffer;
-	*size_out = size;
+	*total_size_out = (unsigned long)fragment_size * config.fragments;
+	*num_fragments_out = config.fragments;
 	return compress;
 }
 
@@ -421,7 +423,9 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 {
 	struct compr_gapless_mdata mdata;
 	struct compress *compress;
-	int size, num_read, wrote;
+	int fragment_size, num_read, wrote;
+	unsigned long allocated_buffer_size;
+	unsigned int num_fragments;
 	unsigned int file_idx = 0;
 	struct snd_codec codec;
 	char *buffer, *name;
@@ -436,17 +440,20 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 
 	parse_file(name, &codec);
 	compress = compress_open_and_prepare(card, device, &codec, buffer_size,
-					     frag, name, file, &buffer, &size);
+					     frag, name, file, &buffer,
+					     &allocated_buffer_size, &num_fragments);
 	if (!compress)
 		goto FILE_EXIT;
+
+	fragment_size = (int)(allocated_buffer_size / num_fragments);
 
 	if (pb_mode == PLAYBACK_MODE_GAPLESS) {
 		memset(&mdata, 0, sizeof(mdata));
 		compress_set_gapless_metadata(compress, &mdata);
 	}
 
-	printf("Playing file %s On Card %u device %u, with buffer of %lu bytes\n",
-			name, card, device, buffer_size);
+	printf("Playing file %s On Card %u device %u, with buffer of %lu bytes, %u fragments\n",
+			name, card, device, allocated_buffer_size, num_fragments);
 	printf("Format %u Channels %u, %u Hz, Bit Rate %d\n",
 			codec.id, codec.ch_in, codec.sample_rate, codec.bit_rate);
 
@@ -462,8 +469,8 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 				goto TRACK_EXIT;
 
 			if (verbose)
-				printf("Playing file %s On Card %u device %u, with buffer of %lu bytes\n",
-					    name, card, device, buffer_size);
+				printf("Playing file %s On Card %u device %u, with buffer of %lu bytes, %u fragments\n",
+				       name, card, device, allocated_buffer_size, num_fragments);
 
 			if (pb_mode == PLAYBACK_MODE_GAPLESS) {
 				int rc;
@@ -495,12 +502,16 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 				parse_file(name, &codec);
 				compress = compress_open_and_prepare(card, device, &codec,
 								     buffer_size, frag, name,
-								     file, &buffer, &size);
+								     file, &buffer,
+								     &allocated_buffer_size,
+								     &num_fragments);
 				if (!compress)
 					goto FILE_EXIT;
 
-				printf("Playing file %s On Card %u device %u, with buffer of %lu bytes\n",
-					name, card, device, buffer_size);
+				fragment_size = num_fragments ? (int)(allocated_buffer_size / num_fragments) : 0;
+
+				printf("Playing file %s On Card %u device %u, with buffer of %lu bytes, %u fragments\n",
+					name, card, device, allocated_buffer_size, num_fragments);
 				printf("Format %u Channels %u, %u Hz, Bit Rate %d\n",
 					codec.id, codec.ch_in, codec.sample_rate, codec.bit_rate);
 
@@ -511,7 +522,7 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 		}
 
 		do {
-			num_read = fread(buffer, 1, size, file);
+			num_read = fread(buffer, 1, fragment_size, file);
 			if (num_read > 0) {
 				wrote = compress_write(compress, buffer, num_read);
 				if (wrote < 0) {
