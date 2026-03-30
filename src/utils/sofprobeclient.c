@@ -81,6 +81,7 @@
 #include "probes_demux.h"
 
 static int verbose;
+static int parser_debug;
 static FILE *finfo;
 
 static const unsigned int DEFAULT_CHANNELS = 4;
@@ -98,6 +99,7 @@ static void usage(void)
 		"-b\tbuffer size (default 8192)\n"
 		"-f\tfragments (default 4)\n"
 		"-v\tverbose mode\n"
+		"-D\tenable parser debug messages\n"
 		"-l\tlength of record in seconds (0 = unlimited)\n"
 		"-h\tPrints this help list\n\n"
 		"-C\tSpecify the number of channels (default %u)\n"
@@ -213,7 +215,7 @@ static void capture_and_parse(unsigned int card, unsigned int device,
 			fprintf(stderr, "ERR: %s\n", compress_get_error(compress));
 			goto buf_exit;
 		}
-		if ((unsigned int)read != size) {
+		if (parser_debug && (unsigned int)read != size) {
 			fprintf(stderr, "We read %d, DSP sent %d\n",
 				size, read);
 		}
@@ -309,7 +311,7 @@ int main(int argc, char **argv)
 	verbose = 0;
 	finfo = stderr;
 
-	while ((c = getopt(argc, argv, "hvl:R:C:F:b:f:c:d:")) != -1) {
+	while ((c = getopt(argc, argv, "hvDl:R:C:F:b:f:c:d:")) != -1) {
 		switch (c) {
 		case 'h':
 			usage();
@@ -328,6 +330,9 @@ int main(int argc, char **argv)
 			break;
 		case 'v':
 			verbose = 1;
+			break;
+		case 'D':
+			parser_debug = 1;
 			break;
 		case 'l':
 			length = strtol(optarg, NULL, 10);
