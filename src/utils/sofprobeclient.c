@@ -219,20 +219,27 @@ static void capture_and_parse(unsigned int card, unsigned int device,
 		}
 
 		if (read > 0) {
+			int remaining = read;
+			char *src = buffer;
+
 			total_read += read;
 
-			/* Feed captured data into the probe parser */
-			parser_fetch_free_buffer(parser, &parse_buf, &parse_len);
-			if ((size_t)read > parse_len) {
-				fprintf(stderr, "Warning: read %d > parser buffer %zu, truncating\n",
-					read, parse_len);
-				read = parse_len;
-			}
-			memcpy(parse_buf, buffer, read);
-			ret = parser_parse_data(parser, read);
-			if (ret < 0) {
-				fprintf(stderr, "Parser error %d, stopping\n", ret);
-				goto buf_exit;
+			/* Feed captured data to the parser in chunks
+			 * that fit its internal buffer.
+			 */
+			while (remaining > 0) {
+				int chunk;
+
+				parser_fetch_free_buffer(parser, &parse_buf, &parse_len);
+				chunk = remaining < (int)parse_len ? remaining : (int)parse_len;
+				memcpy(parse_buf, src, chunk);
+				ret = parser_parse_data(parser, chunk);
+				if (ret < 0) {
+					fprintf(stderr, "Parser error %d, stopping\n", ret);
+					goto buf_exit;
+				}
+				src += chunk;
+				remaining -= chunk;
 			}
 
 			if (verbose) {
