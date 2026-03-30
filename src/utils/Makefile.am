@@ -2,7 +2,7 @@ bin_PROGRAMS = cplay crecord sofprobeclient
 
 cplay_SOURCES = cplay.c wave.c
 crecord_SOURCES = crecord.c wave.c
-sofprobeclient_SOURCES = sofprobeclient.c wave.c
+sofprobeclient_SOURCES = sofprobeclient.c probes_demux.c
 
 cplay_CFLAGS = -I$(top_srcdir)/include
 crecord_CFLAGS = -I$(top_srcdir)/include
