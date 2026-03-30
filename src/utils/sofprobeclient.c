@@ -84,9 +84,9 @@ static int file;
 static FILE *finfo;
 static bool streamed;
 
-static const unsigned int DEFAULT_CHANNELS = 1;
-static const unsigned int DEFAULT_RATE = 44100;
-static const unsigned int DEFAULT_FORMAT = SNDRV_PCM_FORMAT_S16_LE;
+static const unsigned int DEFAULT_CHANNELS = 4;
+static const unsigned int DEFAULT_RATE = 48000;
+static const unsigned int DEFAULT_FORMAT = SNDRV_PCM_FORMAT_S32_LE;
 static const unsigned int DEFAULT_CODEC_ID = SND_AUDIOCODEC_PCM;
 
 static const struct {
@@ -397,9 +397,9 @@ static void sig_handler(int signum __attribute__ ((unused)))
 int main(int argc, char **argv)
 {
 	char *file;
-	unsigned long buffer_size = 0;
+	unsigned long buffer_size = 8192;
 	int c, i;
-	unsigned int card = 0, device = 0, frag = 0, length = 0;
+	unsigned int card = 3, device = 0, frag = 4, length = 0;
 	unsigned int rate = DEFAULT_RATE, channels = DEFAULT_CHANNELS;
 	unsigned int format = DEFAULT_FORMAT;
 	unsigned int codec_id = DEFAULT_CODEC_ID;
