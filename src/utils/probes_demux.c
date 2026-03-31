@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "probe_dma_frame.h"
@@ -26,13 +27,16 @@
 #define DATA_READ_LIMIT 4096	/**< Data limit for file read */
 #define FILES_LIMIT	32	/**< Maximum num of probe output files */
 #define FILE_PATH_LIMIT 128	/**< Path limit for probe output files */
+#define IDLE_TIMEOUT_MS 200	/**< Close idle audio files after this many ms */
 
 struct wave_files {
 	FILE *fd;
 	uint32_t buffer_id;
 	uint32_t fmt;
 	uint32_t size;
+	char path[FILE_PATH_LIMIT];
 	struct wave header;
+	struct timespec last_write;
 };
 
 enum p_state {
@@ -86,10 +90,21 @@ bool is_audio_format(uint32_t format)
 	return (format & PROBE_MASK_FMT_TYPE) != 0 && (format & PROBE_MASK_AUDIO_FMT) == 0;
 }
 
+static void make_buffer_path(char *path, uint32_t buffer_id,
+			     uint32_t file_index, bool audio)
+{
+	const char *ext = audio ? "wav" : "bin";
+
+	if (file_index == 0)
+		sprintf(path, "buffer_%#x.%s", buffer_id, ext);
+	else
+		sprintf(path, "buffer_%#x-%d.%s", buffer_id, file_index, ext);
+}
+
 int init_wave(struct dma_frame_parser *p, uint32_t buffer_id, uint32_t format)
 {
 	bool audio = is_audio_format(format);
-	char path[FILE_PATH_LIMIT];
+	uint32_t file_index;
 	int i;
 
 	i = get_buffer_file_free(p->files);
@@ -98,23 +113,29 @@ int init_wave(struct dma_frame_parser *p, uint32_t buffer_id, uint32_t format)
 		exit(0);
 	}
 
-	sprintf(path, "buffer_%d.%s", buffer_id, audio ? "wav" : "bin");
+	/* Find a filename that does not collide with existing files */
+	for (file_index = 0; ; file_index++) {
+		make_buffer_path(p->files[i].path, buffer_id, file_index, audio);
+		if (access(p->files[i].path, F_OK) != 0)
+			break;
+	}
 
-	fprintf(stderr, "%s:\t Creating file %s\n", APP_NAME, path);
+	fprintf(stderr, "%s:\t Creating file %s\n", APP_NAME, p->files[i].path);
 
 	if (!audio && p->log_to_stdout) {
 		p->files[i].fd = stdout;
 	} else {
-		p->files[i].fd = fopen(path, "wb");
+		p->files[i].fd = fopen(p->files[i].path, "wb");
 		if (!p->files[i].fd) {
 			fprintf(stderr, "error: unable to create file %s, error %d\n",
-				path, errno);
+				p->files[i].path, errno);
 			exit(0);
 		}
 	}
 
 	p->files[i].buffer_id = buffer_id;
 	p->files[i].fmt = format;
+	clock_gettime(CLOCK_MONOTONIC, &p->files[i].last_write);
 
 	if (!audio)
 		return i;
@@ -139,31 +160,73 @@ int init_wave(struct dma_frame_parser *p, uint32_t buffer_id, uint32_t format)
 	return i;
 }
 
+/**
+ * Update WAV header sizes and close a single audio file.
+ * Safe to call on non-audio, NULL-fd, or stdout entries (no-ops).
+ */
+static void close_wave_file(struct wave_files *f, bool log)
+{
+	uint32_t chunk_size;
+
+	if (!f->fd || f->fd == stdout) {
+		f->fd = NULL;
+		return;
+	}
+
+	if (log)
+		fprintf(stderr, "%s:\t Closing idle file %s\n",
+			APP_NAME, f->path);
+
+	if (is_audio_format(f->fmt)) {
+		chunk_size = f->size + sizeof(struct wave) -
+			     offsetof(struct riff_chunk, format);
+
+		fseek(f->fd, sizeof(uint32_t), SEEK_SET);
+		fwrite(&chunk_size, sizeof(uint32_t), 1, f->fd);
+		fseek(f->fd, sizeof(struct wave) -
+		      offsetof(struct data_subchunk, subchunk_size),
+		      SEEK_SET);
+		fwrite(&f->size, sizeof(uint32_t), 1, f->fd);
+	}
+
+	fclose(f->fd);
+	f->fd = NULL;
+}
+
 void finalize_wave_files(struct dma_frame_parser *p)
 {
-	struct wave_files *files = p->files;
-	uint32_t i, chunk_size;
+	uint32_t i;
 
-	/* fill the header at the beginning of each file */
-	/* and close all opened files */
-	/* check wave struct to understand the offsets */
 	for (i = 0; i < FILES_LIMIT; i++) {
-		if (!is_audio_format(files[i].fmt))
+		if (!p->files[i].fd)
 			continue;
 
-		if (files[i].fd) {
-			chunk_size = files[i].size + sizeof(struct wave) -
-				     offsetof(struct riff_chunk, format);
+		close_wave_file(&p->files[i], false);
+	}
+}
 
-			fseek(files[i].fd, sizeof(uint32_t), SEEK_SET);
-			fwrite(&chunk_size, sizeof(uint32_t), 1, files[i].fd);
-			fseek(files[i].fd, sizeof(struct wave) -
-			      offsetof(struct data_subchunk, subchunk_size),
-			      SEEK_SET);
-			fwrite(&files[i].size, sizeof(uint32_t), 1, files[i].fd);
+void parser_close_idle_files(struct dma_frame_parser *p)
+{
+	struct timespec now;
+	long long elapsed_ms;
+	uint32_t i;
 
-			fclose(files[i].fd);
-		}
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	for (i = 0; i < FILES_LIMIT; i++) {
+		if (!p->files[i].fd)
+			continue;
+
+		/* Only idle-close audio files */
+		if (!is_audio_format(p->files[i].fmt))
+			continue;
+
+		elapsed_ms =
+			(now.tv_sec - p->files[i].last_write.tv_sec) * 1000LL +
+			(now.tv_nsec - p->files[i].last_write.tv_nsec) / 1000000LL;
+
+		if (elapsed_ms >= IDLE_TIMEOUT_MS)
+			close_wave_file(&p->files[i], true);
 	}
 }
 
@@ -302,7 +365,7 @@ int parser_parse_data(struct dma_frame_parser *p, size_t d_len)
 
 					if (file < 0) {
 						fprintf(stderr,
-							"unable to open file for %u\n",
+							"unable to open file for %#x\n",
 							p->packet->buffer_id);
 						return -EIO;
 					}
@@ -311,7 +374,9 @@ int parser_parse_data(struct dma_frame_parser *p, size_t d_len)
 					       p->packet->data_size_bytes,
 					       p->files[file].fd);
 					p->files[file].size += p->packet->data_size_bytes;
-					}
+					clock_gettime(CLOCK_MONOTONIC,
+						      &p->files[file].last_write);
+				}
 				p->state = READY;
 				break;
 			}

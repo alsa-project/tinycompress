@@ -26,4 +26,6 @@ int parser_parse_data(struct dma_frame_parser *p, size_t d_len);
 
 void finalize_wave_files(struct dma_frame_parser *p);
 
+void parser_close_idle_files(struct dma_frame_parser *p);
+
 #endif
