@@ -244,6 +244,8 @@ static void capture_and_parse(unsigned int card, unsigned int device,
 				remaining -= chunk;
 			}
 
+			parser_close_idle_files(parser);
+
 			if (verbose) {
 				print_time(compress);
 				fprintf(finfo, "%s: read %d\n", __func__, read);
