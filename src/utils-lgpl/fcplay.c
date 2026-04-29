@@ -452,10 +452,8 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 		compress_set_gapless_metadata(compress, &mdata);
 	}
 
-	printf("Playing file %s On Card %u device %u, with buffer of %lu bytes, %u fragments\n",
-			name, card, device, allocated_buffer_size, num_fragments);
-	printf("Format %u Channels %u, %u Hz, Bit Rate %d\n",
-			codec.id, codec.ch_in, codec.sample_rate, codec.bit_rate);
+	compress_print_playback_info(name, card, device, allocated_buffer_size,
+				     num_fragments, &codec);
 
 	compress_start(compress);
 	if (verbose)
@@ -510,10 +508,9 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 
 				fragment_size = num_fragments ? (int)(allocated_buffer_size / num_fragments) : 0;
 
-				printf("Playing file %s On Card %u device %u, with buffer of %lu bytes, %u fragments\n",
-					name, card, device, allocated_buffer_size, num_fragments);
-				printf("Format %u Channels %u, %u Hz, Bit Rate %d\n",
-					codec.id, codec.ch_in, codec.sample_rate, codec.bit_rate);
+				compress_print_playback_info(name, card, device,
+							     allocated_buffer_size,
+							     num_fragments, &codec);
 
 				compress_start(compress);
 				if (verbose)
