@@ -452,8 +452,8 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 		compress_set_gapless_metadata(compress, &mdata);
 	}
 
-	compress_print_playback_info(name, card, device, allocated_buffer_size,
-				     num_fragments, &codec);
+	compress_print_playback_info(name, card, device, file_count, file_idx,
+				     allocated_buffer_size, num_fragments, &codec);
 
 	compress_start(compress);
 	if (verbose)
@@ -465,10 +465,6 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 			file = fopen(name, "rb");
 			if (!file)
 				goto TRACK_EXIT;
-
-			if (verbose)
-				printf("Playing file %s On Card %u device %u, with buffer of %lu bytes, %u fragments\n",
-				       name, card, device, allocated_buffer_size, num_fragments);
 
 			if (pb_mode == PLAYBACK_MODE_GAPLESS) {
 				int rc;
@@ -491,6 +487,11 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 				rc = compress_partial_drain(compress);
 				if (rc)
 					fprintf(stderr, "ERR: partial drain\n");
+
+				compress_print_playback_info(name, card, device,
+							     file_count, file_idx,
+							     allocated_buffer_size,
+							     num_fragments, &codec);
 			} else if (pb_mode == PLAYBACK_MODE_RESTART) {
 				/* restart: drain, close, and reopen for the new file */
 				compress_drain(compress);
@@ -509,12 +510,16 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 				fragment_size = num_fragments ? (int)(allocated_buffer_size / num_fragments) : 0;
 
 				compress_print_playback_info(name, card, device,
+							     file_count, file_idx,
 							     allocated_buffer_size,
 							     num_fragments, &codec);
 
 				compress_start(compress);
 				if (verbose)
 					printf("%s: You should hear audio NOW!!!\n", __func__);
+			} else if (verbose) {
+				printf("Playing file %s On Card %u device %u, with buffer of %lu bytes, %u fragments\n",
+				       name, card, device, allocated_buffer_size, num_fragments);
 			}
 		}
 

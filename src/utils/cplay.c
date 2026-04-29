@@ -844,8 +844,8 @@ void play_samples(char *name, unsigned int card, unsigned int device,
 			fprintf(stderr, "We wrote %d, DSP accepted %d\n", num_read, wrote);
 		}
 	}
-	compress_print_playback_info(name, card, device,
-				     (unsigned long)size, config.fragments, &codec);
+	compress_print_playback_info(name, card, device, 1, 0, (unsigned long)size,
+				     config.fragments, &codec);
 
 	compress_start(compress);
 	if (verbose)

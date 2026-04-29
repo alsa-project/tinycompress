@@ -334,7 +334,8 @@ const char *compress_get_error(struct compress *compress);
 
 /* Prints basic stream details for playback diagnostics */
 void compress_print_playback_info(const char *name, unsigned int card,
-		unsigned int device, unsigned long buffer_size,
+		unsigned int device, unsigned int file_count,
+		unsigned int file_idx, unsigned long buffer_size,
 		unsigned int num_fragments, const struct snd_codec *codec);
 
 /*
