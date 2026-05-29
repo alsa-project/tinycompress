@@ -59,7 +59,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
-#include <sys/errno.h>
+#include <errno.h>
 #include <sys/time.h>
 #include "tinycompress/tinycompress.h"
 #include "tinycompress/compress_ops.h"
