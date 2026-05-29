@@ -228,8 +228,11 @@ int compress_get_tstamp(struct compress *compress,
 	int ret;
 
 	ret = compress->ops->get_tstamp(compress->data, &_samples, sampling_rate);
-	if (ret >= 0)
+	if (ret >= 0) {
+		if (_samples > UINT_MAX)
+			_samples = UINT_MAX;
 		*samples = (unsigned int)_samples;
+	}
 	return ret;
 }
 
