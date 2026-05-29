@@ -113,7 +113,6 @@ struct compress *compress_open(unsigned int card, unsigned int device,
 
 static int populate_compress_plugin_ops(struct compress *compress, const char *name)
 {
-	unsigned int ret = -1;
 	char *token, *token_saveptr;
 	char *compr_name;
 	char lib_name[128];
@@ -135,22 +134,22 @@ static int populate_compress_plugin_ops(struct compress *compress, const char *n
 	if (!dl_hdl) {
 		fprintf(stderr, "%s: unable to open %s, error: %s\n",
 				__func__, lib_name, dlerror());
-		return ret;
+		return -1;
 	}
 
 	compress->ops = dlsym(dl_hdl, "compress_plugin_mops");
 	err = dlerror();
-	if (err) {
+	if (err || compress->ops == NULL) {
 		fprintf(stderr, "%s: dlsym to ops failed, err = '%s'\n",
 				__func__, err);
 		dlclose(dl_hdl);
-		return ret;
+		return -1;
 	}
 	if (compress->ops->magic != COMPRESS_OPS_V2) {
 		fprintf(stderr, "%s: dlsym to ops failed, bad magic (%08x)\n",
 				__func__, compress->ops->magic);
 		dlclose(dl_hdl);
-		return -ENXIO;
+		return -1;
 	}
 	compress->dl_hdl = dl_hdl;
 	return 0;
