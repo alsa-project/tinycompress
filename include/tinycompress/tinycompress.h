@@ -130,6 +130,7 @@ void compress_close(struct compress *compress);
 /*
  * compress_get_hpointer: get the hw timestamp
  * return 0 on success, negative on error
+ * returns -ERANGE if avail exceeds UINT_MAX; *avail is set to UINT_MAX
  *
  * @compress: compress stream on which query is made
  * @avail: buffer available for write/read, in bytes
@@ -154,6 +155,7 @@ int compress_get_hpointer64(struct compress *compress,
 /*
  * compress_get_tstamp: get the raw hw timestamp
  * return 0 on success, negative on error
+ * returns -ERANGE if avail exceeds UINT_MAX; *samples is set to UINT_MAX
  *
  * @compress: compress stream on which query is made
  * @samples: number of decoded samples played

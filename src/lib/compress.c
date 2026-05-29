@@ -208,8 +208,10 @@ int compress_get_hpointer(struct compress *compress,
 
 	ret = compress->ops->get_hpointer(compress->data, &_avail, tstamp);
 	if (ret >= 0) {
-		if (_avail > UINT_MAX)
+		if (_avail > UINT_MAX) {
+			ret = -ERANGE;
 			_avail = UINT_MAX;
+		}
 		*avail = (unsigned int)_avail;
 	}
 	return ret;
@@ -229,8 +231,10 @@ int compress_get_tstamp(struct compress *compress,
 
 	ret = compress->ops->get_tstamp(compress->data, &_samples, sampling_rate);
 	if (ret >= 0) {
-		if (_samples > UINT_MAX)
+		if (_samples > UINT_MAX) {
+			ret = -ERANGE;
 			_samples = UINT_MAX;
+		}
 		*samples = (unsigned int)_samples;
 	}
 	return ret;
