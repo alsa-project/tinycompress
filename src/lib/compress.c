@@ -141,7 +141,7 @@ static int populate_compress_plugin_ops(struct compress *compress, const char *n
 	err = dlerror();
 	if (err || compress->ops == NULL) {
 		fprintf(stderr, "%s: dlsym to ops failed, err = '%s'\n",
-				__func__, err);
+				__func__, err ? err : "N/A");
 		dlclose(dl_hdl);
 		return -1;
 	}
