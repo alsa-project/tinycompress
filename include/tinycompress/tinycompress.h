@@ -132,7 +132,7 @@ void compress_close(struct compress *compress);
  * return 0 on success, negative on error
  *
  * @compress: compress stream on which query is made
- * @avail: buffer availble for write/read, in bytes
+ * @avail: buffer available for write/read, in bytes
  * @tstamp: hw time
  */
 int compress_get_hpointer(struct compress *compress,
@@ -140,11 +140,11 @@ int compress_get_hpointer(struct compress *compress,
 
 
 /*
- * compress_get_hpointe64r: get the hw timestamp
+ * compress_get_hpointer64: get the hw timestamp
  * return 0 on success, negative on error
  *
  * @compress: compress stream on which query is made
- * @avail: buffer availble for write/read, in bytes
+ * @avail: buffer available for write/read, in bytes
  * @tstamp: hw time
  */
 int compress_get_hpointer64(struct compress *compress,
