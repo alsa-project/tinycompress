@@ -53,6 +53,7 @@ include/Makefile
 src/Makefile
 src/lib/Makefile
 src/utils/Makefile
+src/utils/sofprobeclient/Makefile
 src/utils-lgpl/Makefile
 tinycompress.pc])
 AC_OUTPUT

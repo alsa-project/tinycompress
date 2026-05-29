@@ -33,6 +33,7 @@ m4/lt~obsolete.m4
 cplay
 crecord
 fcplay
+sofprobeclient
 
 # other ignores
 *.patch
