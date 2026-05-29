@@ -178,6 +178,11 @@ static void *compress_hw_open_by_name(const char *name,
 		goto codec_fail;
 	}
 
+	if (compress->ioctl_version < 0) {
+		oops(&bad_compress, -EPROTO, "invalid protocol version number");
+		goto codec_fail;
+	}
+
 	if (ioctl(compress->fd, SNDRV_COMPRESS_GET_CAPS, &caps)) {
 		oops(compress, errno, "cannot get device caps");
 		goto codec_fail;
@@ -248,8 +253,6 @@ static int compress_hw_get_hpointer(void *data,
 		return oops(compress, ENODEV, "device not ready");
 
 	const int version = get_compress_hw_version(compress);
-	if (version <= 0)
-		return -1;
 
 	if (version < SNDRV_PROTOCOL_VERSION(0, 4, 0)) {
 		/* SNDRV_COMPRESS_AVAIL64 not supported, fallback to SNDRV_COMPRESS_AVAIL */
@@ -529,14 +532,11 @@ static int compress_hw_set_gapless_metadata(void *data,
 {
 	struct compress_hw_data *compress = (struct compress_hw_data *)data;
 	struct snd_compr_metadata metadata;
-	int version;
 
 	if (!is_compress_hw_ready(compress))
 		return oops(compress, ENODEV, "device not ready");
 
-	version = get_compress_hw_version(compress);
-	if (version <= 0)
-		return -1;
+	const int version = get_compress_hw_version(compress);
 
 	if (version < SNDRV_PROTOCOL_VERSION(0, 1, 1))
 		return oops(compress, ENXIO, "gapless apis not supported in kernel");
