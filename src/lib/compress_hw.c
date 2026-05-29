@@ -179,7 +179,7 @@ static void *compress_hw_open_by_name(const char *name,
 	}
 
 	if (compress->ioctl_version < 0) {
-		oops(&bad_compress, -EPROTO, "invalid protocol version number");
+		oops(&bad_compress, EPROTO, "invalid protocol version number");
 		goto codec_fail;
 	}
 
