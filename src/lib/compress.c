@@ -81,6 +81,22 @@ const char *compress_get_error(struct compress *compress)
 	return compress->ops->get_error(compress->data);
 }
 
+void compress_print_playback_info(const char *name, unsigned int card,
+		unsigned int device, unsigned int file_count,
+		unsigned int file_idx, unsigned long buffer_size,
+		unsigned int num_fragments, const struct snd_codec *codec)
+{
+	if (file_count > 1)
+		printf("Playing file %u/%u %s On Card %u device %u\n", file_idx + 1,
+		       file_count, name, card, device);
+	else
+		printf("Playing file %s On Card %u device %u\n", name, card, device);
+	printf(" Buffer size: %lu bytes, %u fragments, fragment size: %lu bytes\n",
+	       buffer_size, num_fragments, buffer_size / num_fragments);
+	printf(" Format %u Channels %u, %u Hz, Bit Rate %d\n",
+		codec->id, codec->ch_in, codec->sample_rate, (int)codec->bit_rate);
+}
+
 int is_compress_running(struct compress *compress)
 {
 	return compress->ops->is_compress_running(compress->data);
