@@ -24,6 +24,7 @@
 #define APP_NAME "sof-probes"
 
 #define PACKET_MAX_SIZE	4096	/**< Size limit for probe data packet */
+#define PROBE_DATA_MAX_SIZE	(1024 * 1024)	/**< Sanity limit for probe data payload */
 #define DATA_READ_LIMIT 4096	/**< Data limit for file read */
 #define FILES_LIMIT	32	/**< Maximum num of probe output files */
 #define FILE_PATH_LIMIT 128	/**< Path limit for probe output files */
@@ -51,7 +52,7 @@ struct dma_frame_parser {
 	struct probe_data_packet *packet;
 	size_t packet_size;
 	uint8_t *w_ptr;				/* Write pointer to copy data to */
-	uint32_t total_data_to_copy;		/* Total bytes left to copy */
+	size_t total_data_to_copy;		/* Total bytes left to copy */
 	int start;				/* Start of unfilled data */
 	int len;				/* Data buffer fill level */
 	uint8_t data[DATA_READ_LIMIT];
@@ -256,23 +257,33 @@ int validate_data_packet(struct probe_data_packet *packet)
 int process_sync(struct dma_frame_parser *p)
 {
 	struct probe_data_packet *temp_packet;
+	size_t total_data_to_copy;
+	size_t new_packet_size;
+
+	/*
+	 * data_size_bytes comes straight from the (untrusted) probe stream. validate
+	 */
+	if (p->packet->data_size_bytes > PROBE_DATA_MAX_SIZE) {
+		fprintf(stderr, "error: probe data size %u exceeds limit %u\n",
+			p->packet->data_size_bytes, PROBE_DATA_MAX_SIZE);
+		return -EINVAL;
+	}
 
 	/* request to copy data_size from probe packet and 64-bit checksum */
-	p->total_data_to_copy = p->packet->data_size_bytes + sizeof(uint64_t);
+	total_data_to_copy = (size_t)p->packet->data_size_bytes + sizeof(uint64_t);
 
-	if (sizeof(struct probe_data_packet) + p->total_data_to_copy >
-	    p->packet_size) {
-		p->packet_size = sizeof(struct probe_data_packet) +
-			p->total_data_to_copy;
-
-		temp_packet = realloc(p->packet, p->packet_size);
+	new_packet_size = sizeof(struct probe_data_packet) + total_data_to_copy;
+	if (new_packet_size > p->packet_size) {
+		temp_packet = realloc(p->packet, new_packet_size);
 
 		if (!temp_packet)
 			return -ENOMEM;
 
 		p->packet = temp_packet;
+		p->packet_size = new_packet_size;
 	}
 
+	p->total_data_to_copy = total_data_to_copy;
 	p->w_ptr = (uint8_t *)p->packet->data;
 
 	return 0;
@@ -344,14 +355,23 @@ int parser_parse_data(struct dma_frame_parser *p, size_t d_len)
 					i++;
 				}
 				break;
-			case SYNC:
+			case SYNC: {
 				/* SYNC -> CHECK */
-				if (process_sync(p) < 0) {
+				int ret = process_sync(p);
+
+				if (ret == -ENOMEM) {
 					fprintf(stderr, "OOM, quitting\n");
 					return -ENOMEM;
 				}
+				if (ret < 0) {
+					/* bad packet, drop it and resync */
+					p->total_data_to_copy = 0;
+					p->state = READY;
+					break;
+				}
 				p->state = CHECK;
 				break;
+			}
 			case CHECK:
 				/* CHECK -> READY */
 				/* find corresponding file and save data if valid */
