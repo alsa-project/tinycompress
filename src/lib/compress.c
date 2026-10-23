@@ -78,6 +78,8 @@ extern struct compress_ops compress_hw_ops;
 
 const char *compress_get_error(struct compress *compress)
 {
+	if (!compress)
+		return "compress device not opened";
 	return compress->ops->get_error(compress->data);
 }
 
@@ -193,6 +195,8 @@ struct compress *compress_open_by_name(const char *name,
 
 void compress_close(struct compress *compress)
 {
+	if (!compress)
+		return;
 	compress->ops->close(compress->data);
 	if (compress->dl_hdl)
 		dlclose(compress->dl_hdl);
