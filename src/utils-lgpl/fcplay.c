@@ -209,7 +209,7 @@ static int get_codec_id(int codec_id)
 		return SND_AUDIOCODEC_PCM;
 	default:
 		fprintf(stderr, "Not supported AVcodec: %d\n", codec_id);
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 }
 
@@ -217,6 +217,9 @@ static unsigned int get_aac_format(AVFormatContext *ctx)
 {
 	unsigned char buf[4];
 	int n;
+
+	if (ctx->iformat == av_find_input_format("mov"))
+		return SND_AUDIOSTREAMFORMAT_RAW;
 
 	avio_seek(ctx->pb, 0, SEEK_SET);
 	n = avio_read(ctx->pb, buf, sizeof(buf));
@@ -241,32 +244,97 @@ static unsigned int get_aac_format(AVFormatContext *ctx)
 	return 0;
 }
 
-static int parse_file(const char *file, struct snd_codec *codec)
+struct playback_input {
+	FILE *file;
+	AVFormatContext *ctx;
+	AVPacket *packet;
+	int stream_index;
+	int packet_offset;
+};
+
+static void close_input(struct playback_input *input)
+{
+	av_packet_free(&input->packet);
+	avformat_close_input(&input->ctx);
+	if (input->file)
+		fclose(input->file);
+	memset(input, 0, sizeof(*input));
+}
+
+static int read_input(struct playback_input *input, char *buffer, int size)
+{
+	int copied = 0;
+	int available, count, ret;
+	char errbuf[AV_ERROR_MAX_STRING_SIZE];
+
+	if (input->file) {
+		copied = fread(buffer, 1, size, input->file);
+		if (ferror(input->file)) {
+			fprintf(stderr, "Unable to read input file\n");
+			return -1;
+		}
+		return copied;
+	}
+
+	while (copied < size) {
+		if (input->packet_offset == input->packet->size) {
+			av_packet_unref(input->packet);
+			input->packet_offset = 0;
+			ret = av_read_frame(input->ctx, input->packet);
+			if (ret == AVERROR_EOF)
+				break;
+			if (ret < 0) {
+				av_strerror(ret, errbuf, sizeof(errbuf));
+				fprintf(stderr, "Unable to read AAC packet: %s\n", errbuf);
+				return -1;
+			}
+			if (input->packet->stream_index != input->stream_index) {
+				av_packet_unref(input->packet);
+				continue;
+			}
+		}
+		available = input->packet->size - input->packet_offset;
+		count = size - copied;
+		if (count > available)
+			count = available;
+		if (!count)
+			continue;
+		memcpy(buffer + copied, input->packet->data + input->packet_offset, count);
+		input->packet_offset += count;
+		copied += count;
+	}
+
+	return copied;
+}
+
+static int open_input(const char *file, struct snd_codec *codec,
+			  struct playback_input *input)
 {
 	AVFormatContext *ctx = NULL;
 	AVStream *stream;
-	char errbuf[50];
-	int err = 0, i, filled = 0;
+	char errbuf[AV_ERROR_MAX_STRING_SIZE];
+	int err = 0, i, codec_id, filled = 0;
 
 	memset(codec, 0, sizeof(*codec));
+	close_input(input);
 
 	err = avformat_open_input(&ctx, file, NULL, NULL);
 	if (err < 0) {
 		av_strerror(err, errbuf, sizeof(errbuf));
 		fprintf(stderr, "Unable to open %s: %s\n", file, errbuf);
-		exit(EXIT_FAILURE);
+		goto error;
 	}
 
 	err = avformat_find_stream_info(ctx, NULL);
 	if (err < 0) {
 		av_strerror(err, errbuf, sizeof(errbuf));
 		fprintf(stderr, "Unable to identify %s: %s\n", file, errbuf);
-		goto exit;
+		goto error;
 	}
 
 	if (ctx->nb_streams < 1) {
 		fprintf(stderr, "No streams found in %s\n", file);
-		goto exit;
+		goto error;
 	}
 
 	if (verbose)
@@ -283,7 +351,11 @@ static int parse_file(const char *file, struct snd_codec *codec)
 
 			if (!filled) {
 				/* we fill params from 1st audio stream */
-				codec->id = get_codec_id(stream->codecpar->codec_id);
+				input->stream_index = i;
+				codec_id = get_codec_id(stream->codecpar->codec_id);
+				if (codec_id < 0)
+					goto error;
+				codec->id = codec_id;
 				codec->ch_in = stream->codecpar->ch_layout.nb_channels;
 				codec->ch_out = stream->codecpar->ch_layout.nb_channels;
 				codec->sample_rate = stream->codecpar->sample_rate;
@@ -336,22 +408,44 @@ static int parse_file(const char *file, struct snd_codec *codec)
 		}
 	}
 
+	if (!filled) {
+		fprintf(stderr, "No audio streams found in %s\n", file);
+		goto error;
+	}
+
 	if (verbose)
 		av_dump_format(ctx, 0, file, 0);
 
+	if (codec->id == SND_AUDIOCODEC_AAC &&
+		codec->format == SND_AUDIOSTREAMFORMAT_RAW) {
+		input->packet = av_packet_alloc();
+		if (!input->packet) {
+			fprintf(stderr, "Unable to allocate AAC packet\n");
+			goto error;
+		}
+		input->ctx = ctx;
+		return 0;
+	}
+
 	avformat_close_input(&ctx);
+	input->file = fopen(file, "rb");
+	if (!input->file) {
+		fprintf(stderr, "Unable to open file '%s'\n", file);
+		goto error;
+	}
 	return 0;
 
-exit:
+error:
 	avformat_close_input(&ctx);
-	exit(EXIT_FAILURE);
-
+	close_input(input);
+	return -1;
 }
 
 static struct compress *
 compress_open_and_prepare(unsigned int card, unsigned int device,
 			  struct snd_codec *codec, unsigned long buffer_size,
-			  const char *name, FILE *file, char **buffer_out,
+			  const char *name, struct playback_input *input,
+			  char **buffer_out,
 			  int *size_out)
 {
 	struct compr_config config;
@@ -383,7 +477,12 @@ compress_open_and_prepare(unsigned int card, unsigned int device,
 	}
 
 	/* write full buffer data initially */
-	num_read = fread(buffer, 1, size * config.fragments, file);
+	num_read = read_input(input, buffer, size * config.fragments);
+	if (num_read < 0) {
+		free(buffer);
+		compress_close(compress);
+		return NULL;
+	}
 	if (num_read > 0) {
 		if (verbose)
 			printf("%s: Doing first buffer write of %d\n", __func__, num_read);
@@ -417,18 +516,14 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 	unsigned int file_idx = 0;
 	struct snd_codec codec;
 	char *buffer, *name;
-	FILE *file;
+	struct playback_input input = {0};
 
 	name = files[file_idx];
-	file = fopen(name, "rb");
-	if (!file) {
-		fprintf(stderr, "Unable to open file '%s'\n", name);
-		exit(EXIT_FAILURE);
-	}
 
-	parse_file(name, &codec);
+	if (open_input(name, &codec, &input) < 0)
+		goto FILE_EXIT;
 	compress = compress_open_and_prepare(card, device, &codec, buffer_size,
-					     name, file, &buffer, &size);
+					     name, &input, &buffer, &size);
 	if (!compress)
 		goto FILE_EXIT;
 
@@ -449,8 +544,7 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 	do {
 		if (file_idx != 0) {
 			name = files[file_idx];
-			file = fopen(name, "rb");
-			if (!file)
+			if (open_input(name, &codec, &input) < 0)
 				goto TRACK_EXIT;
 
 			if (verbose)
@@ -459,8 +553,6 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 
 			if (pb_mode == PLAYBACK_MODE_GAPLESS) {
 				int rc;
-
-				parse_file(name, &codec);
 
 				rc = compress_set_gapless_metadata(compress, &mdata);
 				if (rc)
@@ -484,10 +576,9 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 				compress_close(compress);
 				free(buffer);
 
-				parse_file(name, &codec);
 				compress = compress_open_and_prepare(card, device, &codec,
 								     buffer_size, name,
-								     file, &buffer, &size);
+								     &input, &buffer, &size);
 				if (!compress)
 					goto FILE_EXIT;
 
@@ -503,7 +594,9 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 		}
 
 		do {
-			num_read = fread(buffer, 1, size, file);
+			num_read = read_input(&input, buffer, size);
+			if (num_read < 0)
+				goto BUF_EXIT;
 			if (num_read > 0) {
 				wrote = compress_write(compress, buffer, num_read);
 				if (wrote < 0) {
@@ -527,7 +620,7 @@ void play_samples(char **files, unsigned int card, unsigned int device,
 			/* issue drain if it supports */
 			compress_drain(compress);
 		}
-		fclose(file);
+		close_input(&input);
 	} while (file_idx < file_count);
 
 	if (verbose)
@@ -544,7 +637,7 @@ BUF_EXIT:
 	free(buffer);
 	compress_close(compress);
 FILE_EXIT:
-	fclose(file);
+	close_input(&input);
 	if (verbose)
 		printf("%s: exit failure\n", __func__);
 	exit(EXIT_FAILURE);
